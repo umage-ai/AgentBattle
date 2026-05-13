@@ -1,0 +1,36 @@
+@page
+@model AgentBattle.Web.Pages.Agents.IndexModel
+@{ ViewData["Title"] = "Agents"; }
+
+<h1>Registered agents</h1>
+
+@if (Model.Agents.Count == 0)
+{
+    <p>No agent profiles found. Place YAML files in the <code>agents/</code> directory at the solution root.</p>
+}
+else
+{
+    <table class="agents">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Display name</th>
+          <th>Model</th>
+          <th>Endpoint</th>
+          <th>Persona</th>
+        </tr>
+      </thead>
+      <tbody>
+        @foreach (var a in Model.Agents)
+        {
+          <tr>
+            <td><code>@a.Id</code></td>
+            <td>@a.DisplayName</td>
+            <td>@a.Model</td>
+            <td><code>@a.BaseUrl</code></td>
+            <td>@a.PersonaPrompt</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+}
