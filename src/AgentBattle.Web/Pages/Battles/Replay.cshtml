@@ -1,0 +1,67 @@
+@page "{id}"
+@model AgentBattle.Web.Pages.Battles.ReplayModel
+@{ ViewData["Title"] = $"Battle {Model.BattleId}"; }
+
+<div x-data="replay('@Model.BattleId')" x-init="load()" class="replay">
+  <header class="replay-header">
+    <h1>Battle <code>@Model.BattleId</code></h1>
+    <label>
+      <input type="checkbox" x-model="godView" />
+      God view (show all hole cards)
+    </label>
+  </header>
+
+  <section class="poker-table" x-show="loaded">
+    <div class="seats">
+      <template x-for="seat in seats" :key="seat.seat">
+        <div class="seat" :class="{ 'is-current': seat.seat === currentSeat, 'is-folded': seat.hasFolded }">
+          <div class="name" x-text="seat.displayName"></div>
+          <div class="stack">Stack: <span x-text="seat.stack"></span></div>
+          <div class="cards">
+            <template x-for="(card, i) in cardsForSeat(seat.seat)" :key="i">
+              <span class="card" x-text="card"></span>
+            </template>
+          </div>
+          <div class="bet" x-show="seat.currentBet > 0">Bet: <span x-text="seat.currentBet"></span></div>
+        </div>
+      </template>
+    </div>
+    <div class="community">
+      <div class="community-cards">
+        <template x-for="(card, i) in community" :key="i">
+          <span class="card community-card" x-text="card"></span>
+        </template>
+      </div>
+      <div class="pot">Pot: <span x-text="pot"></span></div>
+    </div>
+  </section>
+
+  <section class="controls" x-show="loaded">
+    <button @@click="prev()">&laquo;</button>
+    <button @@click="togglePlay()" x-text="playing ? 'Pause' : 'Play'"></button>
+    <button @@click="next()">&raquo;</button>
+    <label>
+      Speed:
+      <select x-model.number="speed">
+        <option value="1">1x</option>
+        <option value="2">2x</option>
+        <option value="4">4x</option>
+      </select>
+    </label>
+    <input type="range" min="0" :max="Math.max(0, events.length - 1)" x-model.number="idx" @@input="rebuild()" />
+    <span class="event-label" x-text="describeCurrent()"></span>
+  </section>
+
+  <aside class="thoughts" x-show="loaded">
+    <h2>Agent thoughts</h2>
+    <template x-for="seat in seats" :key="seat.seat">
+      <details open>
+        <summary><span x-text="seat.displayName"></span> &mdash; hand <span x-text="lastThoughts[seat.seat]?.handNo ?? '—'"></span></summary>
+        <p x-text="lastThoughts[seat.seat]?.text || '(no reasoning text from this model)'"></p>
+      </details>
+    </template>
+  </aside>
+</div>
+
+<script src="~/lib/alpine.min.js" defer></script>
+<script src="~/js/replay.js"></script>
