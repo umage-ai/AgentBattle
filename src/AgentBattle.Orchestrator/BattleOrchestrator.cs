@@ -60,7 +60,7 @@ public static class BattleOrchestrator
         foreach (var s in config.Seats)
         {
             var profile = profilesById[s.Agent];
-            var systemPrompt = PromptBuilder.System(profile, s.Seat);
+            var systemPrompt = PromptBuilder.SystemPrompt(profile, s.Seat);
             sessions[s.Seat] = new AgentSession(profile.Id, profile.DisplayName, agentClientFactory(profile), toolDefs, systemPrompt);
         }
 

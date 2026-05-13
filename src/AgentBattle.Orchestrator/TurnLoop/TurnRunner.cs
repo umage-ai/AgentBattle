@@ -22,7 +22,6 @@ public sealed class TurnRunner(IBattleEventSink sink, System.TimeProvider time)
         {
             var msg = PromptBuilder.Turn(state, lastError);
             var reply = await session.SendUserAsync(msg, ct);
-            session.RecordAssistantReply(reply);
 
             await sink.WriteAsync(new BattleEvent.AgentThoughts(time.GetUtcNow(), state.HandNo, seat, reply.Content ?? "", reply.Tokens, attempt), ct);
 

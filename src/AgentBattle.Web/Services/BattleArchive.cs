@@ -33,7 +33,7 @@ public sealed class BattleArchive(string battlesDir)
             .FirstOrDefault(p => System.IO.Path.GetFileName(p).Contains(battleId, System.StringComparison.OrdinalIgnoreCase));
         if (file == null) return [];
         var events = new List<BattleEvent>();
-        await foreach (var line in System.IO.File.ReadLinesAsync(file, ct))
+        await foreach (var line in ReadLinesSharedAsync(file, ct))
         {
             if (string.IsNullOrWhiteSpace(line)) continue;
             var e = JsonSerializer.Deserialize<BattleEvent>(line, BattleEventJsonOptions.Default);
@@ -46,7 +46,7 @@ public sealed class BattleArchive(string battlesDir)
     {
         BattleEvent.BattleStarted? started = null;
         BattleEvent.BattleEnded? ended = null;
-        await foreach (var line in System.IO.File.ReadLinesAsync(file, ct))
+        await foreach (var line in ReadLinesSharedAsync(file, ct))
         {
             if (string.IsNullOrWhiteSpace(line)) continue;
             try
@@ -74,5 +74,26 @@ public sealed class BattleArchive(string battlesDir)
             AgentDisplayNames: started.Agents.Select(a => a.DisplayName).ToArray(),
             WinnerAgentId: winner,
             IsComplete: ended != null);
+    }
+
+    /// <summary>
+    /// Reads a file line-by-line with maximally permissive sharing so we can read a JSONL
+    /// while the BattleRunner is still writing to it. <c>File.ReadLinesAsync</c> opens with
+    /// <c>FileShare.Read | FileShare.Delete</c>, which conflicts with the writer's
+    /// <c>FileAccess.Write</c> grant and throws <c>IOException</c>.
+    /// </summary>
+    private static async System.Collections.Generic.IAsyncEnumerable<string> ReadLinesSharedAsync(
+        string path,
+        [System.Runtime.CompilerServices.EnumeratorCancellation] System.Threading.CancellationToken ct)
+    {
+        await using var fs = new System.IO.FileStream(
+            path,
+            System.IO.FileMode.Open,
+            System.IO.FileAccess.Read,
+            System.IO.FileShare.ReadWrite | System.IO.FileShare.Delete);
+        using var reader = new System.IO.StreamReader(fs);
+        string? line;
+        while ((line = await reader.ReadLineAsync(ct)) != null)
+            yield return line;
     }
 }

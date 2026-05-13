@@ -13,7 +13,7 @@ public class PromptBuilderTests
     public void System_prompt_includes_seat_and_persona()
     {
         var profile = new AgentProfile("gpt-5", "GPT-5", "https://x", "gpt-5", "K", 0.7, 1500, 60, "Play tight.");
-        var s = PromptBuilder.System(profile, seat: 3);
+        var s = PromptBuilder.SystemPrompt(profile, seat: 3);
         s.Should().Contain("seat 3").And.Contain("Play tight.");
     }
 
