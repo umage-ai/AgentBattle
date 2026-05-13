@@ -1,0 +1,19 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>AgentBattle.BattleRunner</RootNamespace>
+    <AssemblyName>AgentBattle.BattleRunner</AssemblyName>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\AgentBattle.Domain\AgentBattle.Domain.csproj" />
+    <ProjectReference Include="..\AgentBattle.Orchestrator\AgentBattle.Orchestrator.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="System.CommandLine" />
+    <PackageReference Include="YamlDotNet" />
+  </ItemGroup>
+
+</Project>

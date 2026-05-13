@@ -1,0 +1,10 @@
+game: poker-6max
+hands: 5
+starting_stack: 1000
+blinds:
+  small: 10
+  big: 20
+seats:
+  - { seat: 0, agent: stub-checker }
+  - { seat: 1, agent: stub-checker }
+  - { seat: 2, agent: stub-checker }
