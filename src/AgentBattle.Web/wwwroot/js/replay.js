@@ -6,6 +6,7 @@ function replay(battleId) {
     playing: false,
     speed: 1,
     godView: true,
+    showStrengths: true,
     loaded: false,
 
     seats: [],
@@ -150,6 +151,53 @@ function replay(battleId) {
       if (r === 'T') return '10';
       if (r === '?') return '';
       return r;
+    },
+
+    // Decide which seats' hands we can compute. God view: every seat that has been dealt cards
+    // for the current hand. Spectator view: only seats whose hole cards have been revealed at
+    // showdown so far in playback. Folded seats are always visible in god view (with a 'folded'
+    // marker) but excluded from rank ordering for the leader.
+    _strengthsForVisibleSeats() {
+      if (!window.HandEval) return [];
+      const out = [];
+      for (const seat of this.seats) {
+        const cards = this.holeCards[seat.seat];
+        if (!cards || cards.length < 2) continue;
+        const visible = this.godView || this.revealedSeats.has(seat.seat);
+        if (!visible) continue;
+        const all = [...cards, ...this.community];
+        const ev = window.HandEval.evaluate(all);
+        out.push({
+          seat: seat.seat,
+          displayName: seat.displayName,
+          category: ev.category,
+          categoryName: ev.categoryName,
+          description: ev.description,
+          tiebreak: ev.tiebreak,
+          folded: seat.hasFolded,
+          isLeader: false
+        });
+      }
+      // Rank descending by strength. Folded seats sink to the bottom regardless of category.
+      out.sort((a, b) => {
+        if (a.folded !== b.folded) return a.folded ? 1 : -1;
+        return -window.HandEval.compare(a, b);
+      });
+      if (out.length > 0 && !out[0].folded) out[0].isLeader = true;
+      return out;
+    },
+
+    get rankedStrengths() {
+      return this._strengthsForVisibleSeats();
+    },
+
+    strengthFor(seatId) {
+      const all = this._strengthsForVisibleSeats();
+      const s = all.find(x => x.seat === seatId);
+      if (!s) return null;
+      // Compact label for the on-table badge.
+      const label = s.category ? s.description : s.description;
+      return { label, isLeader: s.isLeader };
     }
   };
 }

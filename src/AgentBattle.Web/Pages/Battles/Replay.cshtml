@@ -5,10 +5,16 @@
 <div x-data="replay('@Model.BattleId')" x-init="load()" class="replay">
   <header class="replay-header">
     <h1>Battle <code>@Model.BattleId</code></h1>
-    <label>
-      <input type="checkbox" x-model="godView" />
-      God view (show all hole cards)
-    </label>
+    <div class="replay-toggles">
+      <label>
+        <input type="checkbox" x-model="godView" />
+        God view (show all hole cards)
+      </label>
+      <label>
+        <input type="checkbox" x-model="showStrengths" />
+        Show hand strengths
+      </label>
+    </div>
   </header>
 
   <section class="poker-table" x-show="loaded">
@@ -65,6 +71,10 @@
             </template>
           </div>
           <div class="bet" x-show="seat.currentBet > 0">Bet: <span x-text="seat.currentBet"></span></div>
+          <div class="seat-strength"
+               x-show="showStrengths && strengthFor(seat.seat)"
+               :class="{ 'is-leader': strengthFor(seat.seat)?.isLeader }"
+               x-text="strengthFor(seat.seat)?.label"></div>
         </div>
       </template>
     </div>
@@ -86,6 +96,22 @@
     <span class="event-label" x-text="describeCurrent()"></span>
   </section>
 
+  <aside class="strengths-panel" x-show="loaded && showStrengths">
+    <h2>Hand rankings (current)</h2>
+    <ol class="strengths-list">
+      <template x-for="(s, idx) in rankedStrengths" :key="s.seat">
+        <li :class="{ 'strengths-leader': idx === 0 && rankedStrengths.length > 1, 'strengths-folded': s.folded }">
+          <span class="strengths-pos" x-text="idx + 1"></span>
+          <span class="strengths-name" x-text="s.displayName"></span>
+          <span class="strengths-cat" x-text="s.categoryName"></span>
+          <span class="strengths-desc" x-text="s.description"></span>
+          <span class="strengths-note" x-show="s.folded">folded</span>
+        </li>
+      </template>
+      <li x-show="rankedStrengths.length === 0" class="strengths-empty">No visible hands yet.</li>
+    </ol>
+  </aside>
+
   <aside class="thoughts" x-show="loaded">
     <h2>Agent thoughts</h2>
     <template x-for="seat in seats" :key="seat.seat">
@@ -98,4 +124,5 @@
 </div>
 
 <script src="~/lib/alpine.min.js" defer></script>
+<script src="~/js/hand-eval.js"></script>
 <script src="~/js/replay.js"></script>
