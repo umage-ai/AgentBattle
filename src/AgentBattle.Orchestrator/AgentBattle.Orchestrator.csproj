@@ -1,0 +1,7 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <ItemGroup>
+    <ProjectReference Include="..\AgentBattle.Domain\AgentBattle.Domain.csproj" />
+  </ItemGroup>
+
+</Project>
