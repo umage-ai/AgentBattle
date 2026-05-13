@@ -25,7 +25,25 @@ public static class ActionParser
             using var doc = JsonDocument.Parse(args);
             if (!doc.RootElement.TryGetProperty("amount", out var amt))
                 return (null, "missing_amount");
-            return (new PokerAction.Raise(seat, amt.GetInt32()), null);
+
+            int amount;
+            switch (amt.ValueKind)
+            {
+                case JsonValueKind.Number:
+                    if (!amt.TryGetInt32(out amount))
+                        return (null, "amount_not_int32");
+                    break;
+                case JsonValueKind.String:
+                    var s = amt.GetString();
+                    if (string.IsNullOrWhiteSpace(s) ||
+                        !int.TryParse(s, System.Globalization.NumberStyles.Integer,
+                            System.Globalization.CultureInfo.InvariantCulture, out amount))
+                        return (null, $"amount_not_numeric: '{s}'");
+                    break;
+                default:
+                    return (null, $"amount_wrong_type: {amt.ValueKind}");
+            }
+            return (new PokerAction.Raise(seat, amount), null);
         }
         catch (JsonException ex)
         {

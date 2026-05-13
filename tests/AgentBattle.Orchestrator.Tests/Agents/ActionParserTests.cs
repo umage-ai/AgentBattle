@@ -43,4 +43,30 @@ public class ActionParserTests
         action.Should().BeNull();
         error.Should().Contain("missing_amount");
     }
+
+    [Fact]
+    public void Parses_raise_with_string_amount()
+    {
+        // Some local LLMs emit numbers as strings — accept them gracefully
+        // rather than throwing out of the retry loop.
+        var (action, error) = ActionParser.Parse(new ToolCall("raise", "{\"amount\":\"75\"}"), seat: 4);
+        error.Should().BeNull();
+        action.Should().BeOfType<PokerAction.Raise>().Which.Amount.Should().Be(75);
+    }
+
+    [Fact]
+    public void Returns_error_for_non_numeric_string_amount()
+    {
+        var (action, error) = ActionParser.Parse(new ToolCall("raise", "{\"amount\":\"big\"}"), seat: 4);
+        action.Should().BeNull();
+        error.Should().Contain("amount_not_numeric");
+    }
+
+    [Fact]
+    public void Returns_error_for_amount_of_wrong_type()
+    {
+        var (action, error) = ActionParser.Parse(new ToolCall("raise", "{\"amount\":true}"), seat: 4);
+        action.Should().BeNull();
+        error.Should().Contain("amount_wrong_type");
+    }
 }
