@@ -1,0 +1,10 @@
+game: poker-6max
+hands: 3
+starting_stack: 1000
+blinds:
+  small: 10
+  big: 20
+seats:
+  - { seat: 0, agent: ollama-llama3 }
+  - { seat: 1, agent: ollama-llama3 }
+  - { seat: 2, agent: ollama-llama3 }

@@ -1,0 +1,10 @@
+id: ollama-llama3
+display_name: Llama-3 (Ollama)
+base_url: http://localhost:11434/v1
+model: llama3.2:3b
+api_key_env: NONE
+temperature: 0.7
+max_tokens: 1500
+timeout_seconds: 120
+persona_prompt: |
+  You like to mix up your play. Don't be afraid to bluff occasionally.
