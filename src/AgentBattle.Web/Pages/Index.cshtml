@@ -1,0 +1,27 @@
+@page
+@model AgentBattle.Web.Pages.IndexModel
+@{ ViewData["Title"] = "Battles"; }
+
+<h1>Recent battles</h1>
+@if (Model.Battles.Count == 0)
+{
+    <p>No battles recorded yet. Run one with:</p>
+    <pre><code>dotnet run --project src/AgentBattle.BattleRunner -- battle run --config configs/poker-3p-ollama.yaml --agents-dir agents</code></pre>
+}
+else
+{
+    <table class="battles">
+      <thead><tr><th>Started</th><th>Agents</th><th>Winner</th><th></th></tr></thead>
+      <tbody>
+        @foreach (var b in Model.Battles)
+        {
+          <tr>
+            <td>@b.StartedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
+            <td>@string.Join(", ", b.AgentDisplayNames)</td>
+            <td>@(b.IsComplete ? b.WinnerAgentId ?? "—" : "(incomplete)")</td>
+            <td><a asp-page="/Battles/Replay" asp-route-id="@b.BattleId">Watch</a></td>
+          </tr>
+        }
+      </tbody>
+    </table>
+}
