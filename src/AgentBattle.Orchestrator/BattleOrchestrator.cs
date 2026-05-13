@@ -74,6 +74,13 @@ public static class BattleOrchestrator
 
         for (var hand = 1; hand <= config.Hands; hand++)
         {
+            // If only one player still has chips, the match is effectively over —
+            // PokerGame.StartHand would throw "Need at least 2 players with chips".
+            // End the battle gracefully instead.
+            var aliveProbe = await mcp.GetMyStateAsync(seats[0], ct);
+            var seatsWithChips = aliveProbe.Seats.Count(s => s.Stack > 0);
+            if (seatsWithChips < 2) break;
+
             await mcp.StartHandAsync(ct);
 
             // Probe one seat's state to learn inactive seats / community / starting current seat.
