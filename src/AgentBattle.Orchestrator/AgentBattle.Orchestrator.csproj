@@ -4,4 +4,8 @@
     <ProjectReference Include="..\AgentBattle.Domain\AgentBattle.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="ModelContextProtocol" />
+  </ItemGroup>
+
 </Project>

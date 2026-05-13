@@ -9,9 +9,11 @@ public sealed record ApplyResult(bool Ok, string? Reason, PokerAction? Applied)
     public static ApplyResult OkApplied(PokerAction a) => new(true, null, a);
 }
 
+public sealed record PotWinner(int Seat, int Pot, string Description);
+
 public sealed record ShowdownResult(
     IReadOnlyDictionary<int, int> Stacks,
-    IReadOnlyList<(int Seat, int Pot, string Description)> Winners,
+    IReadOnlyList<PotWinner> Winners,
     IReadOnlyDictionary<int, IReadOnlyList<Card>> Reveals);
 
 public sealed class PokerGame
@@ -392,14 +394,14 @@ public sealed class PokerGame
     public ShowdownResult ResolveShowdown()
     {
         var pots = PotManager.BuildPots(new Dictionary<int, int>(_handContributions), _folded.ToHashSet());
-        var winners = new List<(int Seat, int Pot, string Description)>();
+        var winners = new List<PotWinner>();
         foreach (var pot in pots)
         {
             if (pot.EligibleSeats.Count == 0) continue;
             if (pot.EligibleSeats.Count == 1)
             {
                 _stacks[pot.EligibleSeats[0]] += pot.Amount;
-                winners.Add((pot.EligibleSeats[0], pot.Amount, "uncontested"));
+                winners.Add(new PotWinner(pot.EligibleSeats[0], pot.Amount, "uncontested"));
                 continue;
             }
             var scored = pot.EligibleSeats
@@ -412,7 +414,7 @@ public sealed class PokerGame
             foreach (var w in topGroup)
             {
                 _stacks[w.Seat] += share;
-                winners.Add((w.Seat, share, w.Rank.Description));
+                winners.Add(new PotWinner(w.Seat, share, w.Rank.Description));
             }
             if (remainder > 0) _stacks[topGroup[0].Seat] += remainder;
         }
