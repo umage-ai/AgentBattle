@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\src\AgentBattle.Orchestrator\AgentBattle.Orchestrator.csproj" />
+    <ProjectReference Include="..\..\src\AgentBattle.Poker.Mcp\AgentBattle.Poker.Mcp.csproj" />
   </ItemGroup>
 
 </Project>

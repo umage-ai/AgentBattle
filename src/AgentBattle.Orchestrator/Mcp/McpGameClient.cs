@@ -13,9 +13,19 @@ namespace AgentBattle.Orchestrator.Mcp;
 /// Tool responses come back as JSON text content and are deserialized using the same
 /// <see cref="BattleEventJsonOptions.Default"/> options the server used to produce them.
 /// </summary>
-public sealed class McpGameClient : System.IAsyncDisposable
+public sealed class McpGameClient : System.IAsyncDisposable, IGameBackend
 {
     private readonly McpClient _client;
+
+    // Cached state introspection — updated after every state-fetch or successful Apply.
+    // The orchestrator peeks these between calls to decide when to advance street / start the
+    // next hand. The MCP server already includes current_seat/street in its action responses,
+    // and the full PokerState struct also carries them.
+    private int _currentSeat;
+    private Street _currentStreet;
+
+    public int CurrentSeat => _currentSeat;
+    public Street CurrentStreet => _currentStreet;
 
     private McpGameClient(McpClient client) { _client = client; }
 
@@ -68,6 +78,8 @@ public sealed class McpGameClient : System.IAsyncDisposable
         using var doc = JsonDocument.Parse(text);
         if (!doc.RootElement.TryGetProperty("ok", out var ok) || !ok.GetBoolean())
             throw new InvalidOperationException($"start_hand failed: {text}");
+        // A new hand always starts on preflop. Probe state below at callsite to learn current seat.
+        _currentStreet = Street.Preflop;
         return doc.RootElement.GetProperty("hand_no").GetInt32();
     }
 
@@ -75,8 +87,11 @@ public sealed class McpGameClient : System.IAsyncDisposable
     {
         var args = new Dictionary<string, object?> { ["seat"] = seat };
         var text = await CallAsync("get_my_state", args, ct);
-        return JsonSerializer.Deserialize<PokerState>(text, BattleEventJsonOptions.Default)
+        var state = JsonSerializer.Deserialize<PokerState>(text, BattleEventJsonOptions.Default)
                ?? throw new InvalidOperationException($"get_my_state returned null/empty payload: {text}");
+        _currentSeat = state.CurrentSeat;
+        _currentStreet = state.Street;
+        return state;
     }
 
     public async System.Threading.Tasks.Task<(bool Ok, string? Error)> ApplyAsync(PokerAction action, System.Threading.CancellationToken ct = default)
@@ -93,7 +108,19 @@ public sealed class McpGameClient : System.IAsyncDisposable
         var text = await CallAsync(toolName, args, ct);
         using var doc = JsonDocument.Parse(text);
         var ok = doc.RootElement.TryGetProperty("ok", out var okEl) && okEl.GetBoolean();
-        if (ok) return (true, null);
+        if (ok)
+        {
+            // Server response shape on success: { ok, applied, current_seat, street }.
+            // Refresh cache so the orchestrator can introspect without an extra round-trip.
+            if (doc.RootElement.TryGetProperty("current_seat", out var seatEl) && seatEl.ValueKind == JsonValueKind.Number)
+                _currentSeat = seatEl.GetInt32();
+            if (doc.RootElement.TryGetProperty("street", out var streetEl) && streetEl.ValueKind == JsonValueKind.String)
+            {
+                if (System.Enum.TryParse<Street>(streetEl.GetString(), ignoreCase: true, out var parsed))
+                    _currentStreet = parsed;
+            }
+            return (true, null);
+        }
         var err = doc.RootElement.TryGetProperty("error", out var errEl) ? errEl.GetString() : text;
         return (false, err);
     }
