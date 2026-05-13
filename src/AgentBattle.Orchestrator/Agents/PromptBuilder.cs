@@ -27,12 +27,12 @@ public static class PromptBuilder
         - Most hands should be folded preflop, especially from early position. Strong starters: high pairs (AA, KK, QQ, JJ, TT) and AK. Decent: medium pairs, AQ/AJ, suited connectors. Weak/junk: low offsuit cards.
         - Position matters: acting later in a betting round gives you information. Be tighter out of position, looser on the button.
         - Compare pot odds to your equity: if calling 20 to win 100, you only need to be best ~17% of the time to break even.
-        - Don't put chips in unless you can justify it with hand strength, fold equity, or position. When unsure and free, check; when unsure and facing a bet, leaning fold is usually right.
-        - Vary your play. Predictable agents get exploited.
+        - Bluff occasionally — predictable agents get exploited. Mix value bets and bluffs at a ratio that punishes both folds and calls.
 
-        How to reply
-        - First, briefly state your reasoning in plain prose: hand strength, position, pot odds, read on opponents.
-        - Then call exactly one action tool to commit your decision.
+        How to reply — IMPORTANT
+        - Your reply MUST contain reasoning prose AND exactly one tool call. Replies with only a tool call and no prose will be treated as invalid.
+        - Structure: 2-4 sentences of prose covering (a) your hand strength, (b) what you read from opponents' recent actions, (c) the action you're choosing and why. Then call the tool.
+        - Even when the decision is obvious ("fold junk preflop"), write at least one sentence explaining the read. The reasoning is the point of this experiment — silence loses information.
 
         {profile.PersonaPrompt}
         """;
