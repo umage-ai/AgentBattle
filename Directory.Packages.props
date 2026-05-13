@@ -1,0 +1,14 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageVersion Include="ModelContextProtocol" Version="*" />
+    <PackageVersion Include="YamlDotNet" Version="*" />
+    <PackageVersion Include="System.CommandLine" Version="*" />
+    <PackageVersion Include="xunit" Version="*" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="*" />
+    <PackageVersion Include="FluentAssertions" Version="*" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="*" />
+  </ItemGroup>
+</Project>
