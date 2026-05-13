@@ -8,52 +8,205 @@ pre { background: #f4f4f5; padding: 0.75rem; border-radius: 4px; overflow-x: aut
 .replay { max-width: 1100px; }
 .replay-header { display: flex; justify-content: space-between; align-items: center; }
 
+/* ---------- Poker table ---------- */
+
 .poker-table {
-  background: #0b6e2f;
-  color: #fff;
-  border-radius: 16px;
-  padding: 1rem;
-  margin: 1rem 0;
   position: relative;
-  min-height: 320px;
+  background:
+    radial-gradient(ellipse at center, #1f7a3b 0%, #14582a 60%, #0d4220 100%);
+  border: 10px solid #4a2c1a;
+  border-radius: 50% / 30%;
+  box-shadow:
+    inset 0 0 60px rgba(0, 0, 0, 0.45),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.05),
+    0 8px 24px rgba(0, 0, 0, 0.25);
+  padding: 2.5rem 3rem;
+  margin: 1.5rem 0;
+  min-height: 420px;
+  color: #fff;
+  overflow: hidden;
 }
+
+/* Felt highlight overlay for subtle texture */
+.poker-table .felt {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse at 50% 40%, rgba(255, 255, 255, 0.07) 0%, transparent 50%);
+}
+
+/* ---------- Community area (centered on felt) ---------- */
+
+.community {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: auto;
+  z-index: 1;
+}
+
+.community-cards {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  min-height: 2.5rem;
+  margin-bottom: 0.75rem;
+}
+
+.community .pot {
+  display: inline-block;
+  background: rgba(0, 0, 0, 0.55);
+  color: #fde68a;
+  font-weight: 700;
+  padding: 0.35rem 1rem;
+  border-radius: 999px;
+  border: 1px solid rgba(253, 230, 138, 0.3);
+  font-size: 0.95rem;
+  letter-spacing: 0.02em;
+}
+
+/* ---------- Seats: 6 positions arranged around the felt ---------- */
 
 .poker-table .seats {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
+  grid-template-columns: 1fr 1fr 1fr;
+  grid-template-rows: auto 1fr auto;
+  gap: 0.75rem 1.5rem;
+  position: relative;
+  z-index: 2;
+  min-height: 360px;
 }
 
+/* Position seats around the perimeter, leaving the center for community */
+.seat[data-seat-pos="0"] { grid-column: 1; grid-row: 1; }
+.seat[data-seat-pos="1"] { grid-column: 3; grid-row: 1; }
+.seat[data-seat-pos="2"] { grid-column: 3; grid-row: 3; }
+.seat[data-seat-pos="3"] { grid-column: 2; grid-row: 3; }
+.seat[data-seat-pos="4"] { grid-column: 1; grid-row: 3; }
+.seat[data-seat-pos="5"] { grid-column: 1; grid-row: 2; }
+
 .seat {
-  background: rgba(0,0,0,0.3);
-  border-radius: 8px;
-  padding: 0.75rem;
+  background: rgba(0, 0, 0, 0.45);
+  border: 2px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  padding: 0.6rem 0.75rem;
   text-align: center;
-  border: 2px solid transparent;
-  transition: border-color 200ms ease;
+  transition:
+    border-color 250ms ease,
+    box-shadow 250ms ease,
+    opacity 300ms ease,
+    transform 250ms ease;
+  backdrop-filter: blur(2px);
+  min-width: 0;
+  align-self: start;
 }
-.seat.is-current { border-color: gold; box-shadow: 0 0 10px gold; }
-.seat.is-folded { opacity: 0.5; }
-.seat .name { font-weight: bold; }
-.seat .cards { margin: 0.25rem 0; min-height: 1.5rem; }
+
+.seat.is-current {
+  border-color: #fbbf24;
+  box-shadow:
+    0 0 0 1px rgba(251, 191, 36, 0.4),
+    0 0 18px rgba(251, 191, 36, 0.55);
+  transform: translateY(-2px);
+}
+
+.seat.is-folded {
+  opacity: 0.4;
+  filter: grayscale(0.5);
+}
+
+.seat .name {
+  font-weight: 700;
+  font-size: 0.95rem;
+  margin-bottom: 0.15rem;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.4);
+}
+
+.seat .stack {
+  font-size: 0.8rem;
+  opacity: 0.85;
+}
+
+.seat .cards {
+  margin: 0.35rem 0 0.2rem;
+  min-height: 1.6rem;
+  display: flex;
+  justify-content: center;
+  gap: 0.2rem;
+}
+
+.seat .bet {
+  font-size: 0.8rem;
+  color: #fde68a;
+  margin-top: 0.15rem;
+}
+
+.seat.is-folded .hole-card {
+  transform: rotate(-8deg);
+  transition: transform 300ms ease;
+}
+
+/* ---------- Cards ---------- */
 
 .card {
   display: inline-block;
   background: #fff;
   color: #111;
   border-radius: 4px;
-  padding: 0.15rem 0.4rem;
-  margin: 0 0.15rem;
-  font-family: ui-monospace, monospace;
-  font-weight: bold;
-  min-width: 1.5rem;
-}
-.community {
+  padding: 0.25rem 0.45rem;
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-weight: 700;
+  min-width: 1.8rem;
   text-align: center;
-  margin: 1rem 0;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  line-height: 1.2;
 }
-.community-cards .card { font-size: 1.1rem; }
-.community .pot { margin-top: 0.5rem; font-weight: bold; }
+
+.community-card {
+  font-size: 1.15rem;
+  min-width: 2rem;
+  padding: 0.35rem 0.55rem;
+}
+
+/* Suit colors. The 2-char card notation's 2nd char is the suit letter. */
+.card[data-suit="h"], .card[data-suit="d"] { color: #dc2626; }
+.card[data-suit="s"], .card[data-suit="c"] { color: #111; }
+
+/* Card back: diagonal stripe pattern, hide the "??" text */
+.card[data-back="true"] {
+  background:
+    repeating-linear-gradient(
+      45deg,
+      #1e3a8a 0,
+      #1e3a8a 4px,
+      #1e40af 4px,
+      #1e40af 8px
+    );
+  color: transparent;
+  border-color: rgba(255, 255, 255, 0.15);
+  box-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.35),
+    inset 0 0 0 2px rgba(255, 255, 255, 0.1);
+}
+
+/* ---------- Card enter animation (Alpine x-transition) ---------- */
+
+.card-enter {
+  transition: transform 280ms ease-out, opacity 280ms ease-out;
+}
+.card-enter-start {
+  transform: scale(0.4) translateY(-12px) rotate(-6deg);
+  opacity: 0;
+}
+.card-enter-end {
+  transform: scale(1) translateY(0) rotate(0);
+  opacity: 1;
+}
+
+/* ---------- Controls ---------- */
 
 .controls {
   display: flex;

@@ -12,27 +12,39 @@
   </header>
 
   <section class="poker-table" x-show="loaded">
+    <div class="felt">
+      <div class="community">
+        <div class="community-cards">
+          <template x-for="(card, i) in community" :key="card + '-' + i">
+            <span class="card community-card"
+                  :data-suit="card[1]"
+                  x-text="card"
+                  x-transition:enter="card-enter"
+                  x-transition:enter-start="card-enter-start"
+                  x-transition:enter-end="card-enter-end"></span>
+          </template>
+        </div>
+        <div class="pot">Pot: <span x-text="pot"></span></div>
+      </div>
+    </div>
     <div class="seats">
-      <template x-for="seat in seats" :key="seat.seat">
-        <div class="seat" :class="{ 'is-current': seat.seat === currentSeat, 'is-folded': seat.hasFolded }">
+      <template x-for="(seat, idx) in seats" :key="seat.seat">
+        <div class="seat"
+             :data-seat-pos="idx"
+             :class="{ 'is-current': seat.seat === currentSeat, 'is-folded': seat.hasFolded }">
           <div class="name" x-text="seat.displayName"></div>
           <div class="stack">Stack: <span x-text="seat.stack"></span></div>
           <div class="cards">
             <template x-for="(card, i) in cardsForSeat(seat.seat)" :key="i">
-              <span class="card" x-text="card"></span>
+              <span class="card hole-card"
+                    :data-back="card === '??'"
+                    :data-suit="card[1]"
+                    x-text="card"></span>
             </template>
           </div>
           <div class="bet" x-show="seat.currentBet > 0">Bet: <span x-text="seat.currentBet"></span></div>
         </div>
       </template>
-    </div>
-    <div class="community">
-      <div class="community-cards">
-        <template x-for="(card, i) in community" :key="i">
-          <span class="card community-card" x-text="card"></span>
-        </template>
-      </div>
-      <div class="pot">Pot: <span x-text="pot"></span></div>
     </div>
   </section>
 
