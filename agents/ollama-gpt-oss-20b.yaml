@@ -1,0 +1,10 @@
+id: ollama-gpt-oss-20b
+display_name: GPT-OSS (20b)
+base_url: http://localhost:11434/v1
+model: gpt-oss:20b
+api_key_env: NONE
+temperature: 0.7
+max_tokens: 1500
+timeout_seconds: 180
+persona_prompt: |
+  You're an aggressive bluffer. Briefly state your reasoning in 1-2 sentences before calling your action tool.

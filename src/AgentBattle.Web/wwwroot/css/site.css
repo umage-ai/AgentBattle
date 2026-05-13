@@ -148,48 +148,98 @@ pre { background: #f4f4f5; padding: 0.75rem; border-radius: 4px; overflow-x: aut
   transition: transform 300ms ease;
 }
 
-/* ---------- Cards ---------- */
+/* ---------- Cards (real playing-card look) ---------- */
 
 .card {
+  position: relative;
   display: inline-block;
+  width: 44px;
+  height: 62px;
   background: #fff;
   color: #111;
-  border-radius: 4px;
-  padding: 0.25rem 0.45rem;
-  font-family: ui-monospace, "SF Mono", Menlo, monospace;
-  font-weight: 700;
-  min-width: 1.8rem;
-  text-align: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(0, 0, 0, 0.08);
-  line-height: 1.2;
+  border-radius: 5px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.35);
+  font-family: "Georgia", "Times New Roman", serif;
+  vertical-align: middle;
+  margin: 0 2px;
+  overflow: hidden;
 }
 
 .community-card {
-  font-size: 1.15rem;
-  min-width: 2rem;
-  padding: 0.35rem 0.55rem;
+  width: 54px;
+  height: 76px;
+  margin: 0 3px;
 }
+
+.card-inner {
+  position: absolute;
+  inset: 0;
+}
+
+.card-corner {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  line-height: 1;
+  font-weight: 700;
+}
+
+.card-corner.top-left {
+  top: 2px;
+  left: 4px;
+}
+
+.card-corner.bottom-right {
+  bottom: 2px;
+  right: 4px;
+  transform: rotate(180deg);
+}
+
+.card-rank {
+  font-size: 11px;
+  letter-spacing: -0.5px;
+}
+
+.card-corner .card-suit {
+  font-size: 11px;
+  line-height: 1;
+}
+
+.card-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  font-size: 22px;
+  line-height: 1;
+  text-shadow: 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+.community-card .card-rank { font-size: 13px; }
+.community-card .card-corner .card-suit { font-size: 13px; }
+.community-card .card-center { font-size: 28px; }
 
 /* Suit colors. The 2-char card notation's 2nd char is the suit letter. */
 .card[data-suit="h"], .card[data-suit="d"] { color: #dc2626; }
 .card[data-suit="s"], .card[data-suit="c"] { color: #111; }
 
-/* Card back: diagonal stripe pattern, hide the "??" text */
+/* Card back: diagonal stripe pattern, no inner content */
 .card[data-back="true"] {
   background:
     repeating-linear-gradient(
       45deg,
       #1e3a8a 0,
-      #1e3a8a 4px,
-      #1e40af 4px,
-      #1e40af 8px
+      #1e3a8a 6px,
+      #2563eb 6px,
+      #2563eb 12px
     );
-  color: transparent;
-  border-color: rgba(255, 255, 255, 0.15);
+  border-color: rgba(255, 255, 255, 0.25);
   box-shadow:
-    0 2px 4px rgba(0, 0, 0, 0.35),
-    inset 0 0 0 2px rgba(255, 255, 255, 0.1);
+    0 2px 4px rgba(0, 0, 0, 0.4),
+    inset 0 0 0 3px #fff,
+    inset 0 0 0 4px #1e3a8a;
 }
 
 /* ---------- Card enter animation (Alpine x-transition) ---------- */

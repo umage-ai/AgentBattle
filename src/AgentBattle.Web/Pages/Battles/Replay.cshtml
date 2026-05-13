@@ -18,10 +18,19 @@
           <template x-for="(card, i) in community" :key="card + '-' + i">
             <span class="card community-card"
                   :data-suit="card[1]"
-                  x-text="card"
                   x-transition:enter="card-enter"
                   x-transition:enter-start="card-enter-start"
-                  x-transition:enter-end="card-enter-end"></span>
+                  x-transition:enter-end="card-enter-end">
+              <span class="card-corner top-left">
+                <span class="card-rank" x-text="displayRank(card[0])"></span>
+                <span class="card-suit" x-text="suitSymbol(card[1])"></span>
+              </span>
+              <span class="card-center" x-text="suitSymbol(card[1])"></span>
+              <span class="card-corner bottom-right">
+                <span class="card-rank" x-text="displayRank(card[0])"></span>
+                <span class="card-suit" x-text="suitSymbol(card[1])"></span>
+              </span>
+            </span>
           </template>
         </div>
         <div class="pot">Pot: <span x-text="pot"></span></div>
@@ -38,8 +47,21 @@
             <template x-for="(card, i) in cardsForSeat(seat.seat)" :key="i">
               <span class="card hole-card"
                     :data-back="card === '??'"
-                    :data-suit="card[1]"
-                    x-text="card"></span>
+                    :data-suit="card[1]">
+                <template x-if="card !== '??'">
+                  <span class="card-inner">
+                    <span class="card-corner top-left">
+                      <span class="card-rank" x-text="displayRank(card[0])"></span>
+                      <span class="card-suit" x-text="suitSymbol(card[1])"></span>
+                    </span>
+                    <span class="card-center" x-text="suitSymbol(card[1])"></span>
+                    <span class="card-corner bottom-right">
+                      <span class="card-rank" x-text="displayRank(card[0])"></span>
+                      <span class="card-suit" x-text="suitSymbol(card[1])"></span>
+                    </span>
+                  </span>
+                </template>
+              </span>
             </template>
           </div>
           <div class="bet" x-show="seat.currentBet > 0">Bet: <span x-text="seat.currentBet"></span></div>

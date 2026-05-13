@@ -6,5 +6,5 @@ blinds:
   big: 20
 seats:
   - { seat: 0, agent: ollama-llama3 }
-  - { seat: 1, agent: ollama-llama3 }
-  - { seat: 2, agent: ollama-llama3 }
+  - { seat: 1, agent: ollama-qwen35-9b }
+  - { seat: 2, agent: ollama-gpt-oss-20b }

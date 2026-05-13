@@ -134,6 +134,22 @@ function replay(battleId) {
       const e = this.events[this.idx];
       if (!e) return '';
       return `event ${this.idx + 1}/${this.events.length}: ${e.t}`;
+    },
+
+    suitSymbol(s) {
+      switch (s) {
+        case 's': return '♠'; // ♠
+        case 'h': return '♥'; // ♥
+        case 'd': return '♦'; // ♦
+        case 'c': return '♣'; // ♣
+        default: return '';
+      }
+    },
+
+    displayRank(r) {
+      if (r === 'T') return '10';
+      if (r === '?') return '';
+      return r;
     }
   };
 }
