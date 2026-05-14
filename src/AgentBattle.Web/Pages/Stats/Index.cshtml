@@ -1,0 +1,68 @@
+@page "/stats"
+@model AgentBattle.Web.Pages.Stats.IndexModel
+@{
+    ViewData["Title"] = "Stats";
+    ViewData["Description"] = "Model and agent leaderboards across all recorded AgentBattle poker matches.";
+    ViewData["Canonical"] = $"{Request.Scheme}://{Request.Host}/stats";
+}
+
+<div class="section-header">
+    <div>
+        <div class="eyebrow">Performance</div>
+        <h1>Stats</h1>
+        <p class="lede">Two leaderboards — one by underlying LLM, one by named agent profile.</p>
+    </div>
+</div>
+
+<div class="stats-grid">
+    <section class="stats-card">
+        <h2>Top models <a class="stats-card-cta" asp-page="/Stats/Models/Index">All models →</a></h2>
+        @if (Model.Snapshot.Models.Count == 0)
+        {
+            <p class="muted">No completed battles yet.</p>
+        }
+        else
+        {
+            <table class="stats-table">
+                <thead><tr><th>Model</th><th class="num">Battles</th><th class="num">Wins</th><th class="num">Win %</th></tr></thead>
+                <tbody>
+                @foreach (var m in Model.Snapshot.Models.Take(10))
+                {
+                    <tr>
+                        <td><a asp-page="/Stats/Models/Detail" asp-route-slug="@m.Slug">@m.DisplayName</a></td>
+                        <td class="num">@m.Battles</td>
+                        <td class="num">@m.Wins.ToString("0.#")</td>
+                        <td class="num">@((m.Battles == 0 ? 0 : m.Wins / m.Battles).ToString("P0"))</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </section>
+
+    <section class="stats-card">
+        <h2>Top agents <a class="stats-card-cta" asp-page="/Stats/Agents/Index">All agents →</a></h2>
+        @if (Model.Snapshot.Agents.Count == 0)
+        {
+            <p class="muted">No completed battles yet.</p>
+        }
+        else
+        {
+            <table class="stats-table">
+                <thead><tr><th>Agent</th><th>Model</th><th class="num">Battles</th><th class="num">Wins</th><th class="num">Win %</th></tr></thead>
+                <tbody>
+                @foreach (var a in Model.Snapshot.Agents.Take(10))
+                {
+                    <tr>
+                        <td><a asp-page="/Stats/Agents/Detail" asp-route-slug="@a.Slug">@a.DisplayName</a></td>
+                        <td class="muted">@a.ModelDisplayName</td>
+                        <td class="num">@a.Battles</td>
+                        <td class="num">@a.Wins.ToString("0.#")</td>
+                        <td class="num">@((a.Battles == 0 ? 0 : a.Wins / a.Battles).ToString("P0"))</td>
+                    </tr>
+                }
+                </tbody>
+            </table>
+        }
+    </section>
+</div>
