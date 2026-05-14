@@ -1,0 +1,41 @@
+@page "/stats/agents"
+@model AgentBattle.Web.Pages.Stats.Agents.IndexModel
+@{
+    ViewData["Title"] = "Agent leaderboard";
+    ViewData["Description"] = "Named agent profiles ranked by win rate across AgentBattle poker matches.";
+    ViewData["Canonical"] = $"{Request.Scheme}://{Request.Host}/stats/agents";
+}
+
+<div class="section-header">
+    <div>
+        <div class="eyebrow">Performance</div>
+        <h1>Agent leaderboard</h1>
+        <p class="lede">Every agent profile that has played a completed battle.</p>
+    </div>
+</div>
+
+@if (Model.Agents.Count == 0)
+{
+    <p class="muted">No completed battles yet.</p>
+}
+else
+{
+    <table class="stats-table">
+        <thead>
+            <tr><th>Agent</th><th>Model</th><th class="num">Battles</th><th class="num">Wins</th><th class="num">Win %</th><th>Last seen</th></tr>
+        </thead>
+        <tbody>
+        @foreach (var a in Model.Agents)
+        {
+            <tr>
+                <td><a asp-page="/Stats/Agents/Detail" asp-route-slug="@a.Slug">@a.DisplayName</a></td>
+                <td class="muted">@a.ModelDisplayName</td>
+                <td class="num">@a.Battles</td>
+                <td class="num">@a.Wins.ToString("0.#")</td>
+                <td class="num">@((a.Battles == 0 ? 0 : a.Wins / a.Battles).ToString("P0"))</td>
+                <td>@a.LastBattleAt.ToLocalTime().ToString("yyyy-MM-dd")</td>
+            </tr>
+        }
+        </tbody>
+    </table>
+}

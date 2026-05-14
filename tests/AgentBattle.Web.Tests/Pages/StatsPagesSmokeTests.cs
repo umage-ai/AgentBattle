@@ -44,4 +44,14 @@ public class StatsPagesSmokeTests : IClassFixture<WebApplicationFactory<Program>
         var resp = await client.GetAsync("/stats/models/zzz-vs-aaa");
         resp.StatusCode.Should().Be(System.Net.HttpStatusCode.NotFound);
     }
+
+    [Fact]
+    public async Task Stats_agents_index_returns_200()
+    {
+        using var client = _factory.CreateClient();
+        var resp = await client.GetAsync("/stats/agents");
+        resp.IsSuccessStatusCode.Should().BeTrue();
+        var body = await resp.Content.ReadAsStringAsync();
+        body.Should().Contain("Agent leaderboard");
+    }
 }
