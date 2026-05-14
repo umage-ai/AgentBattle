@@ -18,4 +18,14 @@ public class StatsPagesSmokeTests : IClassFixture<WebApplicationFactory<Program>
         var body = await resp.Content.ReadAsStringAsync();
         body.Should().Contain("Stats");
     }
+
+    [Fact]
+    public async Task Stats_models_index_returns_200()
+    {
+        using var client = _factory.CreateClient();
+        var resp = await client.GetAsync("/stats/models");
+        resp.IsSuccessStatusCode.Should().BeTrue();
+        var body = await resp.Content.ReadAsStringAsync();
+        body.Should().Contain("model leaderboard");
+    }
 }
