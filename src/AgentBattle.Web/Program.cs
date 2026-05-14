@@ -12,14 +12,18 @@ string FindSolutionRoot(string start)
 }
 
 var solutionRoot = FindSolutionRoot(builder.Environment.ContentRootPath);
-var battlesDir = System.IO.Path.GetFullPath(builder.Configuration["Paths:BattlesDirectory"] ?? "battles", solutionRoot);
-var agentsDir  = System.IO.Path.GetFullPath(builder.Configuration["Paths:AgentsDirectory"]  ?? "agents",  solutionRoot);
+var battlesDir     = System.IO.Path.GetFullPath(builder.Configuration["Paths:BattlesDirectory"] ?? "battles", solutionRoot);
+var agentsDir      = System.IO.Path.GetFullPath(builder.Configuration["Paths:AgentsDirectory"]  ?? "agents",  solutionRoot);
+var suggestionsPath = System.IO.Path.GetFullPath(builder.Configuration["Paths:SuggestionsFile"] ?? "battles/suggestions.json", solutionRoot);
 
 builder.Services.AddSingleton(_ => new BattleArchive(battlesDir));
 builder.Services.AddSingleton(_ => new AgentRegistry(agentsDir));
+builder.Services.AddSingleton(_ => new SuggestionStore(suggestionsPath));
 
 var app = builder.Build();
 app.UseStaticFiles();
 app.UseRouting();
 app.MapRazorPages();
 app.Run();
+
+public partial class Program;
