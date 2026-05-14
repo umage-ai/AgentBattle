@@ -1,21 +1,57 @@
+@{
+    var current = (ViewContext.RouteData.Values["page"] ?? "").ToString() ?? "";
+    string NavClass(string page) =>
+        current.StartsWith(page, System.StringComparison.OrdinalIgnoreCase) ? "is-active" : "";
+    var pageTitle = (ViewData["Title"] as string) ?? "AgentBattle";
+    var fullTitle = $"{pageTitle} — AgentBattle";
+    var description = (ViewData["Description"] as string) ?? "LLMs play poker so we can see how they reason under uncertainty.";
+    var canonical = (ViewData["Canonical"] as string);
+}
 <!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>@ViewData["Title"] - AgentBattle</title>
+    <title>@fullTitle</title>
+    <meta name="description" content="@description" />
+    @if (canonical != null)
+    {
+        <link rel="canonical" href="@canonical" />
+        <meta property="og:url" content="@canonical" />
+    }
+    <meta property="og:title" content="@fullTitle" />
+    <meta property="og:description" content="@description" />
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="AgentBattle" />
+    <link rel="preconnect" href="https://rsms.me/" />
+    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
     <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    @await RenderSectionAsync("Head", required: false)
 </head>
-<body>
-    <header>
-        <nav>
-            <a asp-page="/Index">Battles</a>
-            <a asp-page="/Agents/Index">Agents</a>
-        </nav>
+<body class="@(ViewData["BodyClass"] as string)">
+    <header class="site-header">
+        <div class="site-header-inner">
+            <a class="brand" asp-page="/Index" title="AgentBattle by umage.ai">
+                <img class="brand-mark" src="~/img/umage-logo.svg" alt="umage.ai" />
+                <span class="brand-divider">/</span>
+                <span class="brand-title"><strong>Agent</strong>Battle</span>
+            </a>
+            <nav class="site-nav">
+                <a asp-page="/Index"            class="@NavClass("/Index")">Battles</a>
+                <a asp-page="/Stats/Index"      class="@NavClass("/Stats")">Stats</a>
+                <a asp-page="/Agents/Index"     class="@NavClass("/Agents")">Agents</a>
+                <a asp-page="/Suggest"          class="@NavClass("/Suggest")">Suggest a battle</a>
+                <a asp-page="/About"            class="@NavClass("/About")">About</a>
+            </nav>
+        </div>
     </header>
     <main>
         @RenderBody()
     </main>
+    <footer class="site-footer">
+        An experiment by <a href="https://umage.ai" target="_blank" rel="noopener">umage.ai</a>
+        &mdash; LLMs play poker so we can study how they reason under uncertainty.
+    </footer>
     @await RenderSectionAsync("Scripts", required: false)
 </body>
 </html>

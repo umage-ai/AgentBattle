@@ -19,6 +19,8 @@ var suggestionsPath = System.IO.Path.GetFullPath(builder.Configuration["Paths:Su
 builder.Services.AddSingleton(_ => new BattleArchive(battlesDir));
 builder.Services.AddSingleton(_ => new AgentRegistry(agentsDir));
 builder.Services.AddSingleton(_ => new SuggestionStore(suggestionsPath));
+builder.Services.AddSingleton<StatsAggregator>();
+builder.Services.AddSingleton<StatsCache>();
 
 var app = builder.Build();
 app.UseStaticFiles();
