@@ -10,7 +10,10 @@ public sealed record BattleSummary(
     System.DateTimeOffset StartedAt,
     IReadOnlyList<string> AgentDisplayNames,
     string? WinnerAgentId,
-    bool IsComplete);
+    bool IsComplete,
+    int StartingStack,
+    IReadOnlyList<SeatedAgent> SeatedAgents,
+    IReadOnlyList<RankEntry> Ranking);
 
 public sealed class BattleArchive(string battlesDir)
 {
@@ -67,13 +70,29 @@ public sealed class BattleArchive(string battlesDir)
         string? winner = null;
         if (ended != null && ended.Ranking.Count > 0)
             winner = ended.Ranking.OrderByDescending(r => r.Chips).First().AgentId;
+
+        int startingStack = 0;
+        try
+        {
+            var cfg = JsonSerializer.Deserialize<BattleConfig>(started.ConfigSnapshot, BattleEventJsonOptions.Default);
+            if (cfg != null) startingStack = cfg.StartingStack;
+        }
+        catch (JsonException)
+        {
+            // Older battles may have a free-form snapshot string. Leave starting stack at 0;
+            // chip-share for those rows will read as "n/a" in the UI.
+        }
+
         return new BattleSummary(
             BattleId: started.BattleId,
             FilePath: file,
             StartedAt: started.Ts,
             AgentDisplayNames: started.Agents.Select(a => a.DisplayName).ToArray(),
             WinnerAgentId: winner,
-            IsComplete: ended != null);
+            IsComplete: ended != null,
+            StartingStack: startingStack,
+            SeatedAgents: started.Agents,
+            Ranking: ended?.Ranking ?? []);
     }
 
     /// <summary>
