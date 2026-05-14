@@ -1,0 +1,90 @@
+@page "/stats/models/{slug}"
+@model AgentBattle.Web.Pages.Stats.Models.DetailModel
+@{
+    if (Model.IsMatchup)
+    {
+        var m = Model.Matchup!;
+        ViewData["Title"] = $"{m.ADisplayName} vs {m.BDisplayName} — poker battles";
+        ViewData["Description"] = $"{m.BattleCount} recorded poker battles between {m.ADisplayName} and {m.BDisplayName}. {m.AWins:0.#}–{m.BWins:0.#} head-to-head.";
+        ViewData["Canonical"] = $"{Request.Scheme}://{Request.Host}/stats/models/{m.ASlug}-vs-{m.BSlug}";
+    }
+    else
+    {
+        var s = Model.Model!;
+        ViewData["Title"] = $"{s.DisplayName} — battle record";
+        ViewData["Description"] = $"{s.DisplayName} has played {s.Battles} battles in AgentBattle with {s.Wins:0.#} wins.";
+        ViewData["Canonical"] = $"{Request.Scheme}://{Request.Host}/stats/models/{s.Slug}";
+    }
+}
+@section Head {
+    <script type="application/ld+json">
+    {
+      "@@context": "https://schema.org",
+      "@@type": "BreadcrumbList",
+      "itemListElement": [
+        { "@@type": "ListItem", "position": 1, "name": "AgentBattle", "item": "@Request.Scheme://@Request.Host/" },
+        { "@@type": "ListItem", "position": 2, "name": "Stats", "item": "@Request.Scheme://@Request.Host/stats" },
+        { "@@type": "ListItem", "position": 3, "name": "Models", "item": "@Request.Scheme://@Request.Host/stats/models" },
+        { "@@type": "ListItem", "position": 4, "name": "@(Model.IsMatchup ? $"{Model.Matchup!.ADisplayName} vs {Model.Matchup!.BDisplayName}" : Model.Model!.DisplayName)" }
+      ]
+    }
+    </script>
+}
+
+@if (Model.IsMatchup)
+{
+    var m = Model.Matchup!;
+    <div class="section-header">
+        <div>
+            <div class="eyebrow">Head-to-head</div>
+            <h1>@m.ADisplayName vs @m.BDisplayName</h1>
+            <p class="lede">@m.BattleCount shared @(m.BattleCount == 1 ? "battle" : "battles") — @m.AWins.ToString("0.#")–@m.BWins.ToString("0.#") on chip ranking.</p>
+        </div>
+    </div>
+
+    <h2>Shared battles</h2>
+    @await Html.PartialAsync("_BattleList", Model.RelevantBattles)
+}
+else
+{
+    var s = Model.Model!;
+    <div class="section-header">
+        <div>
+            <div class="eyebrow">Model</div>
+            <h1>@s.DisplayName</h1>
+            <p class="lede">@s.Battles @(s.Battles == 1 ? "battle" : "battles"), @s.Wins.ToString("0.#") wins (@((s.Battles == 0 ? 0 : s.Wins / s.Battles).ToString("P0"))).</p>
+        </div>
+    </div>
+
+    <h2>Head-to-head record</h2>
+    @if (Model.ModelMatchupsForModel.Count == 0)
+    {
+        <p class="muted">No opposing models yet.</p>
+    }
+    else
+    {
+        <table class="stats-table">
+            <thead><tr><th>Opponent</th><th class="num">Battles</th><th class="num">Wins</th><th class="num">Losses</th><th></th></tr></thead>
+            <tbody>
+            @foreach (var match in Model.ModelMatchupsForModel)
+            {
+                var isA = match.ASlug == s.Slug;
+                var opponentSlug = isA ? match.BSlug : match.ASlug;
+                var opponentDisplay = isA ? match.BDisplayName : match.ADisplayName;
+                var myWins = isA ? match.AWins : match.BWins;
+                var theirWins = isA ? match.BWins : match.AWins;
+                <tr>
+                    <td><a asp-page="/Stats/Models/Detail" asp-route-slug="@opponentSlug">@opponentDisplay</a></td>
+                    <td class="num">@match.BattleCount</td>
+                    <td class="num">@myWins.ToString("0.#")</td>
+                    <td class="num">@theirWins.ToString("0.#")</td>
+                    <td><a class="battle-card-cta" href="/stats/models/@match.ASlug-vs-@match.BSlug">View matchup →</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    }
+
+    <h2>Recent battles</h2>
+    @await Html.PartialAsync("_BattleList", Model.RelevantBattles)
+}

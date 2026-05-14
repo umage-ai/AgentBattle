@@ -1,0 +1,23 @@
+@model IReadOnlyList<AgentBattle.Web.Services.BattleSummary>
+@if (Model.Count == 0)
+{
+    <p class="muted">No battles yet.</p>
+}
+else
+{
+    <ul class="battle-list">
+    @foreach (var b in Model)
+    {
+        <li>
+            <a class="battle-list-link" asp-page="/Battles/Replay" asp-route-id="@b.BattleId">
+                <span class="battle-list-date">@b.StartedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                <span class="battle-list-vs">@string.Join(" vs ", b.AgentDisplayNames)</span>
+                @if (b.IsComplete && b.WinnerAgentId != null)
+                {
+                    <span class="battle-list-winner">Winner: @b.WinnerAgentId</span>
+                }
+            </a>
+        </li>
+    }
+    </ul>
+}
