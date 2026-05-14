@@ -2,26 +2,75 @@
 @model AgentBattle.Web.Pages.IndexModel
 @{ ViewData["Title"] = "Battles"; }
 
-<h1>Recent battles</h1>
+<div class="section-header">
+    <div>
+        <div class="eyebrow">Replay archive</div>
+        <h1>Recent battles</h1>
+        <p class="lede">Every line is one hand of agentic poker. Pick a fight to watch.</p>
+    </div>
+    <a class="battle-card-cta" asp-page="/Suggest">Suggest a battle</a>
+</div>
+
 @if (Model.Battles.Count == 0)
 {
-    <p>No battles recorded yet. Run one with:</p>
-    <pre><code>dotnet run --project src/AgentBattle.BattleRunner -- battle run --config configs/poker-3p-ollama.yaml --agents-dir agents</code></pre>
+    <div class="battles-empty">
+        <h2>No battles yet</h2>
+        <p>Run one from the command line to populate the archive:</p>
+<pre><code>dotnet run --project src/AgentBattle.BattleRunner -- \
+  battle run --config configs/poker-3p-ollama.yaml --agents-dir agents</code></pre>
+    </div>
 }
 else
 {
-    <table class="battles">
-      <thead><tr><th>Started</th><th>Agents</th><th>Winner</th><th></th></tr></thead>
-      <tbody>
+    <div class="battle-grid">
         @foreach (var b in Model.Battles)
         {
-          <tr>
-            <td>@b.StartedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</td>
-            <td>@string.Join(", ", b.AgentDisplayNames)</td>
-            <td>@(b.IsComplete ? b.WinnerAgentId ?? "—" : "(incomplete)")</td>
-            <td><a asp-page="/Battles/Replay" asp-route-id="@b.BattleId">Watch</a></td>
-          </tr>
+            <a class="battle-card" asp-page="/Battles/Replay" asp-route-id="@b.BattleId">
+                <div class="battle-card-head">
+                    <span class="battle-card-date">@b.StartedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")</span>
+                    @if (b.IsComplete)
+                    {
+                        <span class="battle-card-status is-complete">Final</span>
+                    }
+                    else
+                    {
+                        <span class="battle-card-status is-running">Live</span>
+                    }
+                </div>
+                <div class="battle-card-vs">
+                    @for (int i = 0; i < b.AgentDisplayNames.Count; i++)
+                    {
+                        var name = b.AgentDisplayNames[i];
+                        var isWinner = b.IsComplete
+                            && b.WinnerAgentId != null
+                            && (name.Equals(b.WinnerAgentId, System.StringComparison.OrdinalIgnoreCase)
+                                || name.StartsWith(b.WinnerAgentId, System.StringComparison.OrdinalIgnoreCase));
+                        <a class="agent-chip @(isWinner ? "is-winner" : "")"
+                           asp-page="/Stats/Agents/Detail"
+                           asp-route-slug="@AgentBattle.Web.Services.ModelSlug.For(name)"
+                           onclick="event.stopPropagation();">
+                            <span class="dot"></span>@name
+                        </a>
+                        @if (i < b.AgentDisplayNames.Count - 1)
+                        {
+                            <span class="vs-sep">vs</span>
+                        }
+                    }
+                </div>
+                <div class="battle-card-foot">
+                    <span>
+                        @if (b.IsComplete && b.WinnerAgentId != null)
+                        {
+                            <span>Winner: <span class="winner-label">@b.WinnerAgentId</span></span>
+                        }
+                        else
+                        {
+                            <span class="muted">In progress…</span>
+                        }
+                    </span>
+                    <span class="battle-card-cta">Watch replay</span>
+                </div>
+            </a>
         }
-      </tbody>
-    </table>
+    </div>
 }
