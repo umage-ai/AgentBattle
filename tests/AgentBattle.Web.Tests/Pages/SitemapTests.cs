@@ -39,4 +39,17 @@ public class SitemapTests : IClassFixture<WebApplicationFactory<Program>>
             System.IO.Directory.Delete(dir, recursive: true);
         }
     }
+
+    [Fact]
+    public async Task Robots_serves_text_plain_with_sitemap_line()
+    {
+        using var client = _factory.CreateClient();
+        var resp = await client.GetAsync("/robots.txt");
+        resp.IsSuccessStatusCode.Should().BeTrue();
+        resp.Content.Headers.ContentType!.MediaType.Should().Be("text/plain");
+        var body = await resp.Content.ReadAsStringAsync();
+        body.Should().Contain("User-agent: *");
+        body.Should().Contain("Sitemap:");
+        body.Should().Contain("/sitemap.xml");
+    }
 }
