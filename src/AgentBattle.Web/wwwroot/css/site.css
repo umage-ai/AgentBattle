@@ -1337,8 +1337,8 @@ table.agents code {
 }
 
 .stats-card {
-    background: var(--surface, #1a1a1f);
-    border: 1px solid var(--border, #2a2a32);
+    background: var(--bg-card);
+    border: 1px solid var(--line);
     border-radius: 12px;
     padding: 1.25rem 1.5rem;
 }
@@ -1369,7 +1369,7 @@ table.agents code {
 .stats-table th, .stats-table td {
     text-align: left;
     padding: 0.5rem 0.75rem;
-    border-bottom: 1px solid var(--border, #2a2a32);
+    border-bottom: 1px solid var(--line);
 }
 
 .stats-table th.num, .stats-table td.num { text-align: right; font-variant-numeric: tabular-nums; }
@@ -1391,13 +1391,14 @@ table.agents code {
     display: flex;
     gap: 1rem;
     padding: 0.75rem 1rem;
-    background: var(--surface, #1a1a1f);
-    border: 1px solid var(--border, #2a2a32);
+    background: var(--bg-card);
+    border: 1px solid var(--line);
     border-radius: 8px;
     text-decoration: none;
     transition: border-color 0.15s ease;
 }
-.battle-list-link:hover { border-color: var(--accent, #6b8afd); }
+.battle-list-link:hover { border-color: var(--accent); }
+.battle-list-link, .battle-list-link:hover { color: var(--text); }
 .battle-list-date { font-variant-numeric: tabular-nums; opacity: 0.7; min-width: 11ch; }
 .battle-list-vs { flex: 1; }
 .battle-list-winner { font-size: 0.85rem; opacity: 0.8; }

@@ -15,7 +15,8 @@ public class SitemapModel(StatsCache cache) : PageModel
 
         var sb = new StringBuilder();
         var settings = new XmlWriterSettings { Indent = false, OmitXmlDeclaration = false, Encoding = Encoding.UTF8 };
-        using (var writer = XmlWriter.Create(sb, settings))
+        using (var stringWriter = new Utf8StringWriter(sb))
+        using (var writer = XmlWriter.Create(stringWriter, settings))
         {
             writer.WriteStartDocument();
             writer.WriteStartElement("urlset", "http://www.sitemaps.org/schemas/sitemap/0.9");
@@ -48,5 +49,10 @@ public class SitemapModel(StatsCache cache) : PageModel
         }
 
         return Content(sb.ToString(), "application/xml", Encoding.UTF8);
+    }
+
+    private sealed class Utf8StringWriter(StringBuilder sb) : System.IO.StringWriter(sb)
+    {
+        public override Encoding Encoding => Encoding.UTF8;
     }
 }
