@@ -1,0 +1,11 @@
+game: poker-6max
+hands: 5
+starting_stack: 1000
+blinds:
+  small: 10
+  big: 20
+seats:
+  - { seat: 0, agent: better-gpt54 }
+  - { seat: 1, agent: better-kimi26 }
+  - { seat: 2, agent: better-sonnet46 }
+  - { seat: 3, agent: ollama-gemma4-31b }
