@@ -1,0 +1,10 @@
+game: poker-6max
+hands: 20
+starting_stack: 1000
+blinds:
+  small: 10
+  big: 20
+seats:
+  - { seat: 0, agent: ollama-qwen36-35b }
+  - { seat: 1, agent: ollama-nemotron-nano }
+  - { seat: 2, agent: ollama-gemma4-31b }
