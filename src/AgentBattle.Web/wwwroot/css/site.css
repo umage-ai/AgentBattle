@@ -509,6 +509,104 @@ body.is-replay-page .site-header-inner { padding-top: 0.55rem; padding-bottom: 0
   40%  { transform: scale(1.18); box-shadow: 0 0 24px var(--accent-glow); }
   100% { transform: scale(1); }
 }
+.hand-result {
+  position: absolute;
+  top: 1.1rem;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  align-items: center;
+  gap: 0.3rem 0.5rem;
+  background: rgba(0, 0, 0, 0.75);
+  border: 1px solid rgba(255, 238, 50, 0.45);
+  border-radius: 999px;
+  padding: 0.35rem 1.1rem;
+  font-size: 0.85rem;
+  color: rgba(255, 255, 255, 0.8);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4), 0 0 18px rgba(255, 238, 50, 0.22);
+  z-index: 6;
+  pointer-events: none;
+  max-width: calc(100% - 2rem);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+}
+.hand-result-no { color: rgba(255, 255, 255, 0.4); white-space: nowrap; }
+.hand-result-winner { display: inline-flex; align-items: center; gap: 0.3rem; }
+.hand-result-winner strong { color: var(--warn); font-weight: 600; }
+.hand-result-pot { color: var(--good); font-family: var(--font-mono); font-weight: 600; }
+
+.battle-result-overlay {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 8;
+  pointer-events: none;
+  background: rgba(0, 0, 0, 0.35);
+  backdrop-filter: blur(2px);
+  -webkit-backdrop-filter: blur(2px);
+}
+.battle-result-card {
+  pointer-events: auto;
+  background: linear-gradient(135deg, rgba(20, 20, 20, 0.96) 0%, rgba(40, 32, 22, 0.96) 100%);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius-lg);
+  padding: 1.2rem 1.6rem;
+  min-width: 280px;
+  box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6), 0 0 30px var(--accent-glow);
+  color: #fff;
+  animation: battle-result-pop 380ms cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes battle-result-pop {
+  0%   { transform: scale(0.85); opacity: 0; }
+  100% { transform: scale(1); opacity: 1; }
+}
+.battle-result-header {
+  font-size: 1rem;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-align: center;
+  color: var(--warn);
+  margin-bottom: 0.75rem;
+  text-shadow: 0 0 12px rgba(255, 238, 50, 0.4);
+}
+.battle-result-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+}
+.battle-result-list li {
+  display: grid;
+  grid-template-columns: 1.4rem 1fr auto;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: var(--radius-sm);
+  font-size: 0.9rem;
+}
+.battle-result-list li.is-winner {
+  background: rgba(184, 150, 106, 0.18);
+  border: 1px solid rgba(184, 150, 106, 0.5);
+}
+.battle-result-pos {
+  font-family: var(--font-mono);
+  color: var(--soft);
+  text-align: right;
+}
+.battle-result-list li.is-winner .battle-result-pos { color: var(--accent); font-weight: 700; }
+.battle-result-name { color: #fff; font-weight: 500; }
+.battle-result-list li.is-winner .battle-result-name { color: var(--warn); }
+.battle-result-chips {
+  font-family: var(--font-mono);
+  color: var(--accent);
+  font-weight: 600;
+}
 
 /* ---------- Seats ---------- */
 
