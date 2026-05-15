@@ -1,3 +1,4 @@
+using System.Text.Json;
 using AgentBattle.Domain.Battles;
 using AgentBattle.Domain.Cards;
 using AgentBattle.Domain.Poker;
@@ -12,20 +13,6 @@ namespace AgentBattle.Orchestrator;
 /// Top-level coordinator for a full poker match. Builds per-agent sessions, loops hands and turns,
 /// and emits a complete battle event stream to the supplied sink.
 /// </summary>
-/// <remarks>
-/// Two entry points:
-/// <list type="bullet">
-///   <item>
-///     <see cref="RunWithBackendAsync"/> — test-friendly: takes an already-constructed
-///     <see cref="IGameBackend"/>. In tests we plug an in-process wrapper around <c>PokerGame</c>;
-///     in production we pass an <see cref="McpGameClient"/>.
-///   </item>
-///   <item>
-///     <see cref="RunAsync"/> — production wrapper that owns the <see cref="McpGameClient"/>
-///     lifecycle (spawn + dispose) around the inner backend call. The CLI in Task 3.7 uses this.
-///   </item>
-/// </list>
-/// </remarks>
 public static class BattleOrchestrator
 {
     /// <summary>
@@ -56,13 +43,17 @@ public static class BattleOrchestrator
 
         // Build sessions per seat
         var sessions = new Dictionary<int, AgentSession>();
-        var toolDefs = BuildToolDefinitions();
+        var actionToolDefs = BuildActionToolDefinitions();
+        var noteToolDefs = BuildNoteToolDefinitions();
         foreach (var s in config.Seats)
         {
             var profile = profilesById[s.Agent];
             var systemPrompt = PromptBuilder.SystemPrompt(profile, s.Seat);
-            sessions[s.Seat] = new AgentSession(profile.Id, profile.DisplayName, agentClientFactory(profile), toolDefs, systemPrompt);
+            sessions[s.Seat] = new AgentSession(profile.Id, profile.DisplayName, agentClientFactory(profile), actionToolDefs, systemPrompt);
         }
+
+        var tracker = new OpponentTracker(seats);
+        var notebook = new AgentNotebook(seats);
 
         await sink.WriteAsync(new BattleEvent.BattleStarted(
             time.GetUtcNow(),
@@ -70,34 +61,27 @@ public static class BattleOrchestrator
             ConfigSnapshot: System.Text.Json.JsonSerializer.Serialize(config, AgentBattle.Domain.Json.BattleEventJsonOptions.Default),
             Agents: config.Seats.Select(s => new SeatedAgent(s.Seat, profilesById[s.Agent].Id, profilesById[s.Agent].DisplayName)).ToArray()), ct);
 
-        var runner = new TurnRunner(sink, time);
+        var runner = new TurnRunner(sink, time, tracker, notebook);
 
         for (var hand = 1; hand <= config.Hands; hand++)
         {
-            // If only one player still has chips, the match is effectively over —
-            // PokerGame.StartHand would throw "Need at least 2 players with chips".
-            // End the battle gracefully instead.
             var aliveProbe = await mcp.GetMyStateAsync(seats[0], ct);
             var seatsWithChips = aliveProbe.Seats.Count(s => s.Stack > 0);
             if (seatsWithChips < 2) break;
 
             await mcp.StartHandAsync(ct);
 
-            // Probe one seat's state to learn inactive seats / community / starting current seat.
-            // HandStarted button/SB/BB are placeholder zeros — the MCP server doesn't currently
-            // expose them through a tool. Documented as a concern for the replay viewer.
             var probeState = await mcp.GetMyStateAsync(seats[0], ct);
             var inactiveSeats = probeState.Seats.Where(s => s.IsInactive).Select(s => s.Seat).ToArray();
 
             await sink.WriteAsync(new BattleEvent.HandStarted(
                 time.GetUtcNow(),
                 HandNo: hand,
-                ButtonSeat: 0,   // TODO: surface from MCP server when tool added
+                ButtonSeat: 0,
                 SbSeat: 0,
                 BbSeat: 0,
                 InactiveSeats: inactiveSeats), ct);
 
-            // God-view reveal — log everyone's hole cards (used by replay viewer in spectator mode).
             var reveals = await mcp.GodViewRevealAsync(ct);
             await sink.WriteAsync(new BattleEvent.HoleCardsDealt(
                 time.GetUtcNow(), hand,
@@ -118,8 +102,6 @@ public static class BattleOrchestrator
                     apply: (a, c) => mcp.ApplyAsync(a, c),
                     ct: ct);
 
-                // Detect street advance — peek state again. Community is monotonically extended
-                // within a hand so a count growth signals the dealer dealt cards for the new street.
                 var probe = await mcp.GetMyStateAsync(seats[0], ct);
                 if (probe.Street != lastStreet && probe.Street != Street.Showdown)
                 {
@@ -133,7 +115,6 @@ public static class BattleOrchestrator
                 }
                 else if (probe.Community.Count > lastCommunityCount)
                 {
-                    // Edge case: all-in fast-forward dealt multiple streets at once.
                     var newCards = probe.Community.Skip(lastCommunityCount).ToArray();
                     await sink.WriteAsync(new BattleEvent.CommunityDealt(time.GetUtcNow(), hand, probe.Street, newCards), ct);
                     lastCommunityCount = probe.Community.Count;
@@ -148,9 +129,50 @@ public static class BattleOrchestrator
                 Reveals: showdown.Reveals.Select(kv => new HoleCardDeal(kv.Key, kv.Value)).ToArray(),
                 Winners: showdown.Winners.Select(w => new PotWinner(w.Seat, w.Pot, w.Description)).ToArray()), ct);
             await sink.WriteAsync(new BattleEvent.HandEnded(time.GetUtcNow(), hand, showdown.Stacks), ct);
+
+            // Feed showdown into tracker so future hands have memory.
+            var winnerSeats = showdown.Winners.Select(w => w.Seat).Distinct().ToArray();
+            var finalCommunity = (await mcp.GetMyStateAsync(seats[0], ct)).Community;
+            tracker.OnShowdown(hand, Array.Empty<int>(), finalCommunity, showdown.Reveals, winnerSeats);
+
+            // Note-taking pass — each still-active seat gets one chance to write a private note.
+            var postState = await mcp.GetMyStateAsync(seats[0], ct);
+            foreach (var seatSummary in postState.Seats.Where(s => !s.IsInactive && s.Stack > 0))
+            {
+                var session = sessions[seatSummary.Seat];
+                var notePrompt = PromptBuilder.NoteTurn(
+                    handNo: hand,
+                    seats: postState.Seats,
+                    reveals: showdown.Reveals,
+                    winners: winnerSeats,
+                    mySeat: seatSummary.Seat,
+                    tracker: tracker,
+                    notebook: notebook);
+
+                try
+                {
+                    var reply = await session.SendUserAsync(notePrompt, noteToolDefs, ct);
+                    if (reply.ToolCalls.Count > 0)
+                    {
+                        var call = reply.ToolCalls[0];
+                        if (call.Name == "take_note")
+                        {
+                            var text = ParseNoteText(call.ArgumentsJson);
+                            if (!string.IsNullOrWhiteSpace(text))
+                            {
+                                notebook.Add(seatSummary.Seat, hand, text);
+                                await sink.WriteAsync(new BattleEvent.AgentNote(time.GetUtcNow(), hand, seatSummary.Seat, text), ct);
+                            }
+                        }
+                    }
+                }
+                catch
+                {
+                    // Notes are best-effort — never let a model hiccup tear down the match.
+                }
+            }
         }
 
-        // Battle ended — read final stacks from any seat's view.
         var finalState = await mcp.GetMyStateAsync(seats[0], ct);
         var finalStacks = finalState.Seats.ToDictionary(s => s.Seat, s => s.Stack);
         var ranking = finalStacks.OrderByDescending(kv => kv.Value)
@@ -161,7 +183,7 @@ public static class BattleOrchestrator
 
     /// <summary>
     /// Production entry point — spawns and owns an <see cref="McpGameClient"/> for the duration
-    /// of the match, then delegates to <see cref="RunWithBackendAsync"/>. Used by the CLI in Task 3.7.
+    /// of the match, then delegates to <see cref="RunWithBackendAsync"/>.
     /// </summary>
     public static async System.Threading.Tasks.Task RunAsync(
         BattleConfig config,
@@ -177,7 +199,7 @@ public static class BattleOrchestrator
         await RunWithBackendAsync(config, profilesById, agentClientFactory, mcp, sink, time, battleId, ct);
     }
 
-    private static IReadOnlyList<ToolDefinition> BuildToolDefinitions() =>
+    private static IReadOnlyList<ToolDefinition> BuildActionToolDefinitions() =>
     [
         new ToolDefinition("fold", "Fold your hand.", """{"type":"object","properties":{},"required":[]}"""),
         new ToolDefinition("check", "Check (only legal when no bet is outstanding).", """{"type":"object","properties":{},"required":[]}"""),
@@ -185,4 +207,27 @@ public static class BattleOrchestrator
         new ToolDefinition("raise", "Raise to the given total bet level.", """{"type":"object","properties":{"amount":{"type":"integer","description":"Total bet level to raise to."}},"required":["amount"]}"""),
         new ToolDefinition("all_in", "Push all remaining chips into the pot.", """{"type":"object","properties":{},"required":[]}""")
     ];
+
+    private static IReadOnlyList<ToolDefinition> BuildNoteToolDefinitions() =>
+    [
+        new ToolDefinition(
+            "take_note",
+            "Record a short private note for yourself to read on future hands. Use it to capture exploitable patterns about an opponent. One sentence max.",
+            """{"type":"object","properties":{"text":{"type":"string","description":"The note text — one sentence about what you've learned."}},"required":["text"]}""")
+    ];
+
+    private static string ParseNoteText(string argsJson)
+    {
+        try
+        {
+            using var doc = JsonDocument.Parse(argsJson);
+            if (doc.RootElement.TryGetProperty("text", out var t) && t.ValueKind == JsonValueKind.String)
+                return t.GetString() ?? "";
+        }
+        catch
+        {
+            // ignore
+        }
+        return "";
+    }
 }

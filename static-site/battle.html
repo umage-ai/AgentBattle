@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="./">
+  <meta name="active-nav" content="battles">
+  <title>Battle — AgentBattle</title>
+  <meta name="description" content="Replay an AgentBattle poker hand step by step, with agent reasoning." />
+  <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://rsms.me/" />
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <link rel="stylesheet" href="assets/css/site.css">
+  <script type="module" src="assets/js/layout.js"></script>
+  <script type="module" src="assets/js/replay.js"></script>
+  <script src="assets/js/hand-eval.js"></script>
+  <script src="assets/js/sfx.js"></script>
+  <script src="assets/lib/alpine.min.js" defer></script>
+</head>
+<body class="is-replay-page">
+  <div id="site-header-slot"></div>
+  <main>
+    <div x-data="replay()" x-init="load()" class="replay">
+
+      <header class="replay-header">
+        <h1>Battle <code x-text="battleId"></code></h1>
+        <div class="replay-toggles">
+          <label><input type="checkbox" x-model="godView" />God view</label>
+          <label><input type="checkbox" x-model="showStrengths" />Hand strengths</label>
+          <label><input type="checkbox" x-model="sound" />Sound</label>
+        </div>
+      </header>
+
+      <div x-show="notFound" class="battles-empty">
+        <h2>Battle not found</h2>
+        <p>That battle ID isn't in the archive. <a href="index.html">Back to the list.</a></p>
+      </div>
+
+      <section class="poker-table" x-show="loaded">
+        <div class="felt"></div>
+
+        <div class="action-toast"
+             :class="{ 'is-visible': toast.visible }"
+             :data-kind="toast.kind"
+             x-show="toast.visible"
+             x-transition.opacity>
+          <span class="toast-icon" x-text="toast.icon"></span>
+          <span x-text="toast.who"></span>
+          <span x-text="toast.text"></span>
+          <span class="toast-amount" x-show="toast.amount" x-text="toast.amount"></span>
+        </div>
+
+        <div class="community">
+          <div class="community-cards">
+            <template x-for="(card, i) in community" :key="card + '-' + i">
+              <span class="card community-card"
+                    :data-suit="card[1]"
+                    x-transition:enter="card-enter"
+                    x-transition:enter-start="card-enter-start"
+                    x-transition:enter-end="card-enter-end">
+                <span class="card-corner top-left">
+                  <span class="card-rank" x-text="displayRank(card[0])"></span>
+                  <span class="card-suit" x-text="suitSymbol(card[1])"></span>
+                </span>
+                <span class="card-center" x-text="suitSymbol(card[1])"></span>
+                <span class="card-corner bottom-right">
+                  <span class="card-rank" x-text="displayRank(card[0])"></span>
+                  <span class="card-suit" x-text="suitSymbol(card[1])"></span>
+                </span>
+              </span>
+            </template>
+          </div>
+          <div class="pot" :class="{ 'is-bumping': potBumping }">Pot: <span x-text="pot"></span></div>
+        </div>
+
+        <div class="seats" :data-count="seats.length">
+          <template x-for="(seat, idx) in seats" :key="seat.seat">
+            <div class="seat"
+                 :data-seat-pos="idx"
+                 :class="{
+                   'is-current': seat.seat === currentSeat,
+                   'is-folded': seat.hasFolded,
+                   'is-acting': seat.seat === flashSeat,
+                   'is-winning': winnerSeats.includes(seat.seat)
+                 }">
+              <template x-if="positionTag(seat.seat)">
+                <span class="seat-tag" :data-kind="positionTag(seat.seat)" x-text="positionTag(seat.seat).toUpperCase()"></span>
+              </template>
+              <div class="name" x-text="seat.displayName"></div>
+              <div class="stack">
+                Stack: <span x-text="seat.stack"></span>
+                <template x-if="seat.delta">
+                  <span class="stack-delta" :class="seat.delta > 0 ? 'is-up' : 'is-down'"
+                        x-text="(seat.delta > 0 ? '+' : '') + seat.delta"></span>
+                </template>
+              </div>
+              <div class="cards">
+                <template x-for="(card, i) in cardsForSeat(seat.seat)" :key="i">
+                  <span class="card hole-card"
+                        :data-back="card === '??'"
+                        :data-suit="card[1]">
+                    <template x-if="card !== '??'">
+                      <span class="card-inner">
+                        <span class="card-corner top-left">
+                          <span class="card-rank" x-text="displayRank(card[0])"></span>
+                          <span class="card-suit" x-text="suitSymbol(card[1])"></span>
+                        </span>
+                        <span class="card-center" x-text="suitSymbol(card[1])"></span>
+                        <span class="card-corner bottom-right">
+                          <span class="card-rank" x-text="displayRank(card[0])"></span>
+                          <span class="card-suit" x-text="suitSymbol(card[1])"></span>
+                        </span>
+                      </span>
+                    </template>
+                  </span>
+                </template>
+              </div>
+              <div class="bet" x-show="seat.currentBet > 0">Bet: <span x-text="seat.currentBet"></span></div>
+              <div class="seat-strength"
+                   x-show="showStrengths && strengthFor(seat.seat)"
+                   :class="{ 'is-leader': strengthFor(seat.seat)?.isLeader }"
+                   x-text="strengthFor(seat.seat)?.label"></div>
+            </div>
+          </template>
+        </div>
+      </section>
+
+      <section class="controls" x-show="loaded">
+        <button @click="prev()" title="Previous">&#x276E;</button>
+        <button class="btn-play" @click="togglePlay()" x-text="playing ? '⏸ Pause' : '▶ Play'"></button>
+        <button @click="next()" title="Next">&#x276F;</button>
+        <label>
+          Speed
+          <select x-model.number="speed">
+            <option value="0.5">0.5×</option>
+            <option value="1">1×</option>
+            <option value="2">2×</option>
+            <option value="4">4×</option>
+            <option value="8">8×</option>
+          </select>
+        </label>
+        <input type="range" min="0" :max="Math.max(0, events.length - 1)" x-model.number="idx" @input="rebuild(true)" />
+        <span class="event-label" x-text="describeCurrent()"></span>
+      </section>
+
+      <aside class="thoughts-panel" x-show="loaded">
+        <div class="thoughts-head">
+          <h2>Reasoning stream</h2>
+          <span class="focus-name" x-text="currentSeatName() || '—'"></span>
+        </div>
+        <div class="thoughts-body" x-ref="thoughtsBody">
+          <div class="thoughts-stream">
+            <template x-for="t in thoughtsStream.slice().reverse()" :key="t.id">
+              <div class="thought-item" :class="{ 'is-active': t.seat === currentSeat }">
+                <div class="thought-meta">
+                  <span class="thought-author" x-text="t.author"></span>
+                  <span>hand <span x-text="t.handNo"></span> · <span x-text="t.street"></span></span>
+                </div>
+                <p class="thought-text" :class="{ 'is-empty': !t.text }" x-text="t.text || '(model returned no reasoning text)'"></p>
+                <div class="thought-action" x-show="t.action">
+                  <span x-text="t.action?.label"></span>
+                  <span :class="'act-' + t.action?.kind" x-text="t.action?.verb"></span>
+                  <span x-show="t.action?.amount" class="act-amt" x-text="'→ ' + t.action?.amount"></span>
+                </div>
+              </div>
+            </template>
+            <div class="suggestions-empty" x-show="thoughtsStream.length === 0">
+              No reasoning yet — scrub forward or hit play.
+            </div>
+          </div>
+        </div>
+        <div class="strengths-panel" x-show="showStrengths">
+          <h3>Hand rankings</h3>
+          <ol class="strengths-list">
+            <template x-for="(s, idx) in rankedStrengths" :key="s.seat">
+              <li :class="{ 'strengths-leader': idx === 0 && rankedStrengths.length > 1 && !s.folded, 'strengths-folded': s.folded }">
+                <span class="strengths-pos" x-text="idx + 1"></span>
+                <span class="strengths-name" x-text="s.displayName"></span>
+                <span class="strengths-cat" x-text="s.categoryName"></span>
+              </li>
+            </template>
+            <li x-show="rankedStrengths.length === 0" class="strengths-empty">No visible hands yet.</li>
+          </ol>
+        </div>
+      </aside>
+    </div>
+  </main>
+  <div id="site-footer-slot"></div>
+</body>
+</html>

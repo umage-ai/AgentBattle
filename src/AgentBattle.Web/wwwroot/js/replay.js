@@ -7,6 +7,7 @@ function replay(battleId) {
     speed: 1,
     godView: true,
     showStrengths: true,
+    sound: true,
     loaded: false,
 
     seats: [],
@@ -14,18 +15,40 @@ function replay(battleId) {
     pot: 0,
     currentSeat: null,
     holeCards: {},
-    lastThoughts: {},
     revealedSeats: new Set(),
+
+    // Hand-level meta
+    buttonSeat: null,
+    sbSeat: null,
+    bbSeat: null,
+
+    // Streaming reasoning entries (one per agent_thoughts event, in order seen)
+    thoughtsStream: [],
+
+    // Visual transient state
+    toast: { visible: false, kind: '', icon: '', who: '', text: '', amount: '' },
+    _toastTimer: null,
+    flashSeat: null,
+    _flashTimer: null,
+    potBumping: false,
+    _potTimer: null,
+    winnerSeats: [],
+    _winnerTimer: null,
+
+    // Stack deltas for hand_ended
+    _lastStacks: {},
+
     _timer: null,
 
     async load() {
       const res = await fetch(`/Battles/Replay/${this.battleId}?handler=events`);
       this.events = await res.json();
-      this.rebuild();
+      this.rebuild(true);
       this.loaded = true;
     },
 
     togglePlay() {
+      if (window.Sfx) Sfx.resume();
       this.playing = !this.playing;
       if (this.playing) this._tick();
       else clearTimeout(this._timer);
@@ -34,55 +57,83 @@ function replay(battleId) {
       if (!this.playing) return;
       if (this.idx < this.events.length - 1) {
         this.idx++;
-        this.rebuild();
-        this._timer = setTimeout(() => this._tick(), 800 / this.speed);
+        this._stepForward(this.events[this.idx]);
+        this._timer = setTimeout(() => this._tick(), 700 / this.speed);
       } else {
         this.playing = false;
       }
     },
-    prev() { if (this.idx > 0) { this.idx--; this.rebuild(); } },
-    next() { if (this.idx < this.events.length - 1) { this.idx++; this.rebuild(); } },
+    prev() {
+      if (this.idx > 0) { this.idx--; this.rebuild(true); }
+    },
+    next() {
+      if (this.idx < this.events.length - 1) {
+        this.idx++;
+        this._stepForward(this.events[this.idx]);
+      }
+    },
 
-    rebuild() {
-      // Re-derive all visible state from events[0..idx].
+    // Full re-derive from scratch. Used by scrubbing and prev.
+    rebuild(silent) {
       this.seats = [];
       this.community = [];
       this.pot = 0;
       this.currentSeat = null;
       this.holeCards = {};
-      this.lastThoughts = {};
       this.revealedSeats = new Set();
+      this.thoughtsStream = [];
+      this.buttonSeat = this.sbSeat = this.bbSeat = null;
+      this.winnerSeats = [];
+      this._lastStacks = {};
 
       for (let i = 0; i <= this.idx && i < this.events.length; i++) {
-        const e = this.events[i];
-        this._applyEvent(e);
+        this._applyEvent(this.events[i], /*silent*/ true);
       }
+      if (!silent) this._playSoundFor(this.events[this.idx]);
     },
 
-    _applyEvent(e) {
+    // Forward step from play/next — drive animations & sounds.
+    _stepForward(e) {
+      this._applyEvent(e, false);
+      this._playSoundFor(e);
+    },
+
+    _applyEvent(e, silent) {
       switch (e.t) {
         case 'battle_started':
           this.seats = e.agents.map(a => ({
             seat: a.seat,
             displayName: a.display_name,
+            agentId: a.id,
             stack: 1000,
             currentBet: 0,
-            hasFolded: false
+            hasFolded: false,
+            delta: 0
           }));
           break;
+
         case 'hand_started':
           this.community = [];
           this.pot = 0;
           this.holeCards = {};
           this.revealedSeats = new Set();
-          this.seats.forEach(s => { s.currentBet = 0; s.hasFolded = false; });
+          this.buttonSeat = e.button_seat;
+          this.sbSeat = e.sb_seat;
+          this.bbSeat = e.bb_seat;
+          this.winnerSeats = [];
+          this.seats.forEach(s => { s.currentBet = 0; s.hasFolded = false; s.delta = 0; });
+          this._lastStacks = Object.fromEntries(this.seats.map(s => [s.seat, s.stack]));
           break;
+
         case 'hole_cards_dealt':
           (e.deals || []).forEach(d => this.holeCards[d.seat] = d.cards);
           break;
+
         case 'community_dealt':
           (e.cards || []).forEach(c => this.community.push(c));
+          if (!silent) this._bumpPot();
           break;
+
         case 'agent_turn_started': {
           this.currentSeat = e.seat;
           const snap = e.state_snapshot;
@@ -99,27 +150,182 @@ function replay(battleId) {
           if (snap) this.pot = snap.pot;
           break;
         }
-        case 'agent_thoughts':
-          this.lastThoughts[e.seat] = { handNo: e.hand_no, text: e.text };
+
+        case 'agent_thoughts': {
+          // Append-or-update entry keyed by (handNo, seat, attempt) so re-derives don't duplicate.
+          const seatObj = this.seats.find(s => s.seat === e.seat);
+          const author = seatObj?.displayName ?? `Seat ${e.seat}`;
+          const id = `${e.hand_no}-${e.seat}-${e.attempt ?? 0}-${this.idx}-${e.ts}`;
+          this.thoughtsStream.push({
+            id,
+            seat: e.seat,
+            handNo: e.hand_no,
+            author,
+            street: this._streetForCurrent(),
+            text: (e.text || '').trim(),
+            action: null
+          });
           break;
-        case 'agent_action':
+        }
+
+        case 'agent_action': {
+          // Attach action to the most recent thought from the same seat for this hand.
+          const t = [...this.thoughtsStream].reverse()
+            .find(x => x.seat === e.seat && x.handNo === e.hand_no);
+          if (t) t.action = this._actionSummary(e);
           if (e.action === 'fold') {
             const s = this.seats.find(x => x.seat === e.seat);
             if (s) s.hasFolded = true;
           }
-          break;
-        case 'showdown':
-          (e.reveals || []).forEach(r => this.revealedSeats.add(r.seat));
-          break;
-        case 'hand_ended':
-          for (const [seat, chips] of Object.entries(e.stacks)) {
-            const local = this.seats.find(x => x.seat === Number(seat));
-            if (local) local.stack = chips;
+          if (!silent) {
+            this._flashSeat(e.seat);
+            this._showToast(e);
+            if (['raise', 'call', 'post'].includes(e.action) || e.amount) this._bumpPot();
           }
           break;
-        case 'battle_ended':
-          // No further state changes; final stacks already captured by last hand_ended.
+        }
+
+        case 'agent_note': {
+          const seatObj = this.seats.find(s => s.seat === e.seat);
+          const author = seatObj?.displayName ?? `Seat ${e.seat}`;
+          const id = `note-${e.hand_no}-${e.seat}-${e.ts}`;
+          this.thoughtsStream.push({
+            id,
+            seat: e.seat,
+            handNo: e.hand_no,
+            author,
+            street: 'note',
+            text: '📝 ' + (e.text || '').trim(),
+            action: { label: 'private note', verb: '', kind: 'note', amount: '' }
+          });
           break;
+        }
+
+        case 'agent_action_rejected':
+          // Show a brief retry note next to the latest thought for that seat.
+          const tr = [...this.thoughtsStream].reverse()
+            .find(x => x.seat === e.seat && x.handNo === e.hand_no);
+          if (tr && !tr.action) tr.action = { label: 'rejected', kind: 'fold', verb: `(retry: ${e.reason})`, amount: '' };
+          break;
+
+        case 'showdown':
+          (e.reveals || []).forEach(r => {
+            this.revealedSeats.add(r.seat);
+            this.holeCards[r.seat] = r.cards || this.holeCards[r.seat];
+          });
+          break;
+
+        case 'hand_ended': {
+          const stacks = e.stacks || {};
+          // Compute delta vs hand-start so we can show floating +/- chips.
+          const winners = [];
+          for (const [seatStr, chips] of Object.entries(stacks)) {
+            const seat = Number(seatStr);
+            const local = this.seats.find(x => x.seat === seat);
+            if (!local) continue;
+            const before = this._lastStacks[seat] ?? local.stack;
+            const d = chips - before;
+            local.stack = chips;
+            local.delta = d;
+            if (d > 0) winners.push(seat);
+          }
+          this.currentSeat = null;
+          if (!silent && winners.length > 0) {
+            this._highlightWinners(winners);
+          }
+          break;
+        }
+
+        case 'battle_ended':
+          this.currentSeat = null;
+          if (!silent) this._highlightBattleWinner(e);
+          break;
+      }
+    },
+
+    _streetForCurrent() {
+      if (this.community.length === 0) return 'preflop';
+      if (this.community.length === 3) return 'flop';
+      if (this.community.length === 4) return 'turn';
+      if (this.community.length === 5) return 'river';
+      return '—';
+    },
+
+    _actionSummary(e) {
+      const map = {
+        fold:   { label: 'Folds.',  verb: 'FOLD',  kind: 'fold' },
+        check:  { label: 'Checks.', verb: 'CHECK', kind: 'check' },
+        call:   { label: 'Calls.',  verb: 'CALL',  kind: 'call' },
+        raise:  { label: 'Raises.', verb: 'RAISE', kind: 'raise' },
+        all_in: { label: 'All-in!', verb: 'ALL-IN', kind: 'all_in' },
+        post:   { label: 'Posts blind.', verb: 'POST', kind: 'call' }
+      };
+      const m = map[e.action] || { label: e.action, verb: e.action.toUpperCase(), kind: 'call' };
+      return { ...m, amount: e.amount ?? '' };
+    },
+
+    _showToast(e) {
+      const seat = this.seats.find(s => s.seat === e.seat);
+      const who = seat ? seat.displayName : `Seat ${e.seat}`;
+      const icons = { fold: '✕', call: '→', check: '✓', raise: '↑', all_in: '★', post: '·' };
+      const verbs = { fold: 'folds', call: 'calls', check: 'checks', raise: 'raises to', all_in: 'all-in', post: 'posts' };
+      this.toast = {
+        visible: true,
+        kind: e.action,
+        icon: icons[e.action] || '·',
+        who,
+        text: verbs[e.action] || e.action,
+        amount: e.amount ? String(e.amount) : ''
+      };
+      clearTimeout(this._toastTimer);
+      this._toastTimer = setTimeout(() => { this.toast.visible = false; }, Math.max(700, 1400 / this.speed));
+    },
+
+    _flashSeat(seat) {
+      this.flashSeat = seat;
+      clearTimeout(this._flashTimer);
+      this._flashTimer = setTimeout(() => { this.flashSeat = null; }, 700);
+    },
+
+    _bumpPot() {
+      this.potBumping = true;
+      clearTimeout(this._potTimer);
+      this._potTimer = setTimeout(() => { this.potBumping = false; }, 360);
+    },
+
+    _highlightWinners(seats) {
+      this.winnerSeats = seats;
+      clearTimeout(this._winnerTimer);
+      this._winnerTimer = setTimeout(() => { this.winnerSeats = []; }, 1600);
+    },
+
+    _highlightBattleWinner(e) {
+      // BattleEnded ranking is sorted by chips descending in the runtime, but be safe.
+      const ranking = e.ranking || [];
+      if (ranking.length === 0) return;
+      const top = ranking.reduce((a, b) => (b.chips > a.chips ? b : a));
+      // Find which seat this agent occupies.
+      const seat = this.seats.find(s => s.agentId === top.agent_id || s.displayName === top.agent_id);
+      if (seat) this._highlightWinners([seat.seat]);
+    },
+
+    _playSoundFor(e) {
+      if (!this.sound || !window.Sfx) return;
+      Sfx.enabled = this.sound;
+      Sfx.resume();
+      switch (e?.t) {
+        case 'hand_started':      Sfx.handStart(); break;
+        case 'hole_cards_dealt':  (e.deals || []).forEach((_, i) => setTimeout(() => Sfx.deal(), i * 60)); break;
+        case 'community_dealt':   (e.cards || []).forEach((_, i) => setTimeout(() => Sfx.deal(), i * 90)); break;
+        case 'agent_action':
+          if (e.action === 'fold')                       Sfx.fold();
+          else if (e.action === 'check')                 Sfx.check();
+          else if (e.action === 'call' || e.action === 'post') Sfx.chip();
+          else if (e.action === 'raise')                 Sfx.raise();
+          else if (e.action === 'all_in')                Sfx.allIn();
+          break;
+        case 'showdown':          Sfx.showdown(); break;
+        case 'battle_ended':      Sfx.victory(); break;
       }
     },
 
@@ -134,15 +340,28 @@ function replay(battleId) {
     describeCurrent() {
       const e = this.events[this.idx];
       if (!e) return '';
-      return `event ${this.idx + 1}/${this.events.length}: ${e.t}`;
+      return `${this.idx + 1}/${this.events.length} · ${e.t}`;
+    },
+
+    currentSeatName() {
+      if (this.currentSeat == null) return '';
+      const s = this.seats.find(x => x.seat === this.currentSeat);
+      return s ? s.displayName : '';
+    },
+
+    positionTag(seat) {
+      if (seat === this.buttonSeat) return 'btn';
+      if (seat === this.sbSeat && this.sbSeat !== this.buttonSeat) return 'sb';
+      if (seat === this.bbSeat && this.bbSeat !== this.buttonSeat && this.bbSeat !== this.sbSeat) return 'bb';
+      return '';
     },
 
     suitSymbol(s) {
       switch (s) {
-        case 's': return '♠'; // ♠
-        case 'h': return '♥'; // ♥
-        case 'd': return '♦'; // ♦
-        case 'c': return '♣'; // ♣
+        case 's': return '♠';
+        case 'h': return '♥';
+        case 'd': return '♦';
+        case 'c': return '♣';
         default: return '';
       }
     },
@@ -153,10 +372,6 @@ function replay(battleId) {
       return r;
     },
 
-    // Decide which seats' hands we can compute. God view: every seat that has been dealt cards
-    // for the current hand. Spectator view: only seats whose hole cards have been revealed at
-    // showdown so far in playback. Folded seats are always visible in god view (with a 'folded'
-    // marker) but excluded from rank ordering for the leader.
     _strengthsForVisibleSeats() {
       if (!window.HandEval) return [];
       const out = [];
@@ -178,7 +393,6 @@ function replay(battleId) {
           isLeader: false
         });
       }
-      // Rank descending by strength. Folded seats sink to the bottom regardless of category.
       out.sort((a, b) => {
         if (a.folded !== b.folded) return a.folded ? 1 : -1;
         return -window.HandEval.compare(a, b);
@@ -195,9 +409,7 @@ function replay(battleId) {
       const all = this._strengthsForVisibleSeats();
       const s = all.find(x => x.seat === seatId);
       if (!s) return null;
-      // Compact label for the on-table badge.
-      const label = s.category ? s.description : s.description;
-      return { label, isLeader: s.isLeader };
+      return { label: s.description, isLeader: s.isLeader };
     }
   };
 }

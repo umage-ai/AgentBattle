@@ -1,7 +1,7 @@
 namespace AgentBattle.Orchestrator.Agents;
 
 /// <summary>
-/// Per-agent identity carrier. Holds the system prompt + tool definitions but does NOT
+/// Per-agent identity carrier. Holds the system prompt + default tool definitions but does NOT
 /// accumulate chat history across turns. Each call to <see cref="SendUserAsync"/> sends
 /// exactly [system, user] to the underlying client. The per-turn user message must be
 /// self-contained — see <see cref="PromptBuilder"/> for the current state + recent-actions
@@ -22,4 +22,11 @@ public sealed class AgentSession(string agentId, string displayName, IAgentClien
 
     public System.Threading.Tasks.Task<AgentReply> SendUserAsync(string content, System.Threading.CancellationToken ct = default)
         => client.ChatAsync([_system, new AgentMessage("user", content)], tools, ct);
+
+    /// <summary>
+    /// Variant for non-action turns (e.g. taking notes between hands) where a different
+    /// tool set should be exposed to the model.
+    /// </summary>
+    public System.Threading.Tasks.Task<AgentReply> SendUserAsync(string content, IReadOnlyList<ToolDefinition> toolsOverride, System.Threading.CancellationToken ct = default)
+        => client.ChatAsync([_system, new AgentMessage("user", content)], toolsOverride, ct);
 }

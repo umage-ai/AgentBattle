@@ -1,0 +1,8 @@
+{
+  "profiles": {
+    "AgentBattle.BattleRunner": {
+      "commandName": "Project",
+      "commandLineArgs": "battle run --config  \"C:\\Projects\\AgentBattle\\configs\\poker-3p-ollama.yaml\" --agents-dir \"C:\\Projects\\AgentBattle\\agents\""
+    }
+  }
+}

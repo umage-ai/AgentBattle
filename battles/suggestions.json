@@ -1,0 +1,13 @@
+[
+  {
+    "id": "4e1fee71",
+    "createdAt": "2026-05-13T18:56:07.0058009+00:00",
+    "suggestedBy": "Smoke Tester",
+    "game": "poker-6max",
+    "agents": [
+      "GPT-4o",
+      "Claude Opus 4.7"
+    ],
+    "note": "Can Opus actually outplay GPT in heads-up NLHE?"
+  }
+]

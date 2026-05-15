@@ -13,6 +13,7 @@ namespace AgentBattle.Domain.Battles;
 [JsonDerivedType(typeof(AgentThoughts), "agent_thoughts")]
 [JsonDerivedType(typeof(AgentAction), "agent_action")]
 [JsonDerivedType(typeof(AgentActionRejected), "agent_action_rejected")]
+[JsonDerivedType(typeof(AgentNote), "agent_note")]
 [JsonDerivedType(typeof(Showdown), "showdown")]
 [JsonDerivedType(typeof(HandEnded), "hand_ended")]
 [JsonDerivedType(typeof(BattleEnded), "battle_ended")]
@@ -26,6 +27,7 @@ public abstract record BattleEvent(System.DateTimeOffset Ts)
     public sealed record AgentThoughts(System.DateTimeOffset Ts, int HandNo, int Seat, string Text, int Tokens, int Attempt) : BattleEvent(Ts);
     public sealed record AgentAction(System.DateTimeOffset Ts, int HandNo, int Seat, string Action, int? Amount, int Attempt, string? AutoReason) : BattleEvent(Ts);
     public sealed record AgentActionRejected(System.DateTimeOffset Ts, int HandNo, int Seat, string Action, int? Amount, string Reason, int Attempt) : BattleEvent(Ts);
+    public sealed record AgentNote(System.DateTimeOffset Ts, int HandNo, int Seat, string Text) : BattleEvent(Ts);
     public sealed record Showdown(System.DateTimeOffset Ts, int HandNo, IReadOnlyList<HoleCardDeal> Reveals, IReadOnlyList<PotWinner> Winners) : BattleEvent(Ts);
     public sealed record HandEnded(System.DateTimeOffset Ts, int HandNo, IReadOnlyDictionary<int, int> Stacks) : BattleEvent(Ts);
     public sealed record BattleEnded(System.DateTimeOffset Ts, IReadOnlyDictionary<int, int> FinalStacks, IReadOnlyList<RankEntry> Ranking) : BattleEvent(Ts);

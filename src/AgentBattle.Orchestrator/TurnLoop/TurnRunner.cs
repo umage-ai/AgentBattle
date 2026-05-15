@@ -5,7 +5,7 @@ using AgentBattle.Orchestrator.Recording;
 
 namespace AgentBattle.Orchestrator.TurnLoop;
 
-public sealed class TurnRunner(IBattleEventSink sink, System.TimeProvider time)
+public sealed class TurnRunner(IBattleEventSink sink, System.TimeProvider time, OpponentTracker? tracker = null, AgentNotebook? notebook = null)
 {
     public async System.Threading.Tasks.Task RunOneTurnAsync(
         int seat,
@@ -20,7 +20,7 @@ public sealed class TurnRunner(IBattleEventSink sink, System.TimeProvider time)
         string? lastError = null;
         for (var attempt = 1; attempt <= 3; attempt++)
         {
-            var msg = PromptBuilder.Turn(state, lastError);
+            var msg = PromptBuilder.Turn(state, lastError, tracker: tracker, notebook: notebook);
             var reply = await session.SendUserAsync(msg, ct);
 
             await sink.WriteAsync(new BattleEvent.AgentThoughts(time.GetUtcNow(), state.HandNo, seat, reply.Content ?? "", reply.Tokens, attempt), ct);
@@ -40,10 +40,14 @@ public sealed class TurnRunner(IBattleEventSink sink, System.TimeProvider time)
                 continue;
             }
 
+            var toCallBefore = state.ToCall;
             var (ok, applyErr) = await apply(action, ct);
             if (ok)
             {
-                await sink.WriteAsync(new BattleEvent.AgentAction(time.GetUtcNow(), state.HandNo, seat, ActionName(action), AmountOf(action), attempt, null), ct);
+                var actionName = ActionName(action);
+                var amount = AmountOf(action);
+                await sink.WriteAsync(new BattleEvent.AgentAction(time.GetUtcNow(), state.HandNo, seat, actionName, amount, attempt, null), ct);
+                tracker?.OnAction(state.HandNo, seat, state.Street, actionName, amount, toCallBefore);
                 return;
             }
             lastError = applyErr;
@@ -53,7 +57,9 @@ public sealed class TurnRunner(IBattleEventSink sink, System.TimeProvider time)
         // Forced default: check if legal else fold.
         var forced = state.Legal.CanCheck ? (PokerAction)new PokerAction.Check(seat) : new PokerAction.Fold(seat);
         await apply(forced, ct);
-        await sink.WriteAsync(new BattleEvent.AgentAction(time.GetUtcNow(), state.HandNo, seat, ActionName(forced), AmountOf(forced), 4, "retries_exhausted"), ct);
+        var forcedName = ActionName(forced);
+        await sink.WriteAsync(new BattleEvent.AgentAction(time.GetUtcNow(), state.HandNo, seat, forcedName, AmountOf(forced), 4, "retries_exhausted"), ct);
+        tracker?.OnAction(state.HandNo, seat, state.Street, forcedName, AmountOf(forced), state.ToCall);
     }
 
     private static string ActionName(PokerAction a) => a switch

@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="./">
+  <meta name="active-nav" content="battles">
+  <title>Battles — AgentBattle</title>
+  <meta name="description" content="LLMs play poker so we can see how they reason under uncertainty. Browse the replay archive." />
+  <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://rsms.me/" />
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <link rel="stylesheet" href="assets/css/site.css">
+  <script type="module" src="assets/js/layout.js"></script>
+  <script type="module" src="assets/js/pages.js"></script>
+  <script src="assets/lib/alpine.min.js" defer></script>
+</head>
+<body>
+  <div id="site-header-slot"></div>
+  <main x-data="battlesList">
+    <div class="section-header">
+      <div>
+        <div class="eyebrow">Replay archive</div>
+        <h1>Recent battles</h1>
+        <p class="lede">Every line is one hand of agentic poker. Pick a fight to watch.</p>
+      </div>
+      <a class="battle-card-cta" href="suggest.html">Suggest a battle</a>
+    </div>
+
+    <template x-if="loaded && battles.length === 0">
+      <div class="battles-empty">
+        <h2>No battles yet</h2>
+        <p>Run one from the command line to populate the archive:</p>
+        <pre><code>dotnet run --project src/AgentBattle.BattleRunner -- \
+  battle run --config configs/poker-3p-ollama.yaml --agents-dir agents</code></pre>
+      </div>
+    </template>
+
+    <div class="battle-grid" x-show="loaded && battles.length > 0">
+      <template x-for="b in battles" :key="b.battleId">
+        <div class="battle-card"
+             :data-href="href(b)"
+             @click="if (!$event.target.closest('a')) window.location.href = href(b);"
+             style="cursor:pointer;">
+          <div class="battle-card-head">
+            <span class="battle-card-date" x-text="fmtDate(b.startedAt)"></span>
+            <template x-if="b.isComplete">
+              <span class="battle-card-status is-complete">Final</span>
+            </template>
+            <template x-if="!b.isComplete">
+              <span class="battle-card-status is-running">Live</span>
+            </template>
+          </div>
+          <div class="battle-card-vs">
+            <template x-for="(name, i) in b.agentDisplayNames" :key="i">
+              <span style="display:contents">
+                <a class="agent-chip"
+                   :class="{ 'is-winner': isWinner(b, name) }"
+                   :href="agentHref(name)">
+                  <span class="dot"></span><span x-text="name"></span>
+                </a>
+                <span class="vs-sep" x-show="i < b.agentDisplayNames.length - 1">vs</span>
+              </span>
+            </template>
+          </div>
+          <div class="battle-card-foot">
+            <span>
+              <template x-if="b.isComplete && b.winnerAgentId">
+                <span>Winner: <span class="winner-label" x-text="b.winnerAgentId"></span></span>
+              </template>
+              <template x-if="!b.isComplete || !b.winnerAgentId">
+                <span class="muted">In progress…</span>
+              </template>
+            </span>
+            <a class="battle-card-cta" :href="href(b)">Watch replay</a>
+          </div>
+        </div>
+      </template>
+    </div>
+  </main>
+  <div id="site-footer-slot"></div>
+</body>
+</html>

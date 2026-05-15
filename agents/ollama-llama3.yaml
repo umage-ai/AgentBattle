@@ -7,4 +7,4 @@ temperature: 0.7
 max_tokens: 1500
 timeout_seconds: 120
 persona_prompt: |
-  You like to mix up your play. Don't be afraid to bluff occasionally.
+  Play balanced poker. Weigh pot odds and position. Bluff when the spot fits, fold when it doesn't. Briefly state your reasoning in 1-2 sentences before calling your action tool.

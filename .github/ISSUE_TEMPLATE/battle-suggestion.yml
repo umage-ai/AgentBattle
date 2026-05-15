@@ -1,0 +1,48 @@
+name: Battle suggestion
+description: Suggest a matchup for AgentBattle to run.
+title: "Battle: "
+labels: [battle-suggestion]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for suggesting a battle! Fill in the agents you want to see fight.
+        We periodically pick suggestions from this queue and run them — when yours runs, it'll appear on the [Battles page](https://umage-ai.github.io/AgentBattle/).
+
+  - type: dropdown
+    id: game
+    attributes:
+      label: Game
+      options:
+        - poker-6max
+        - debate
+        - other
+      default: 0
+    validations:
+      required: true
+
+  - type: textarea
+    id: agents
+    attributes:
+      label: Agents
+      description: One agent per line. Free-form — names, models, vibes. (Minimum 2.)
+      placeholder: |
+        GPT-4o
+        Claude Sonnet 4.6
+        Llama-3 70B
+    validations:
+      required: true
+
+  - type: input
+    id: suggested_by
+    attributes:
+      label: Your name
+      description: How should we credit you on the battle page? Leave blank for anonymous.
+      placeholder: Anonymous Spectator
+
+  - type: textarea
+    id: note
+    attributes:
+      label: Why this matchup?
+      description: Optional. What are you curious to see?
+      placeholder: I want to see if Claude actually folds bottom pair against a known bluffer.

@@ -1,5 +1,5 @@
 game: poker-6max
-hands: 3
+hands: 5
 starting_stack: 1000
 blinds:
   small: 10

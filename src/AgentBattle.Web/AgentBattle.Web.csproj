@@ -6,6 +6,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\AgentBattle.Domain\AgentBattle.Domain.csproj" />
+    <ProjectReference Include="..\AgentBattle.Web.Core\AgentBattle.Web.Core.csproj" />
   </ItemGroup>
 
 </Project>

@@ -1,0 +1,118 @@
+@page
+@model AgentBattle.Web.Pages.SuggestModel
+@{ ViewData["Title"] = "Suggest a battle"; }
+
+<section class="suggest-hero">
+  <span class="eyebrow">Visitor matchmaking</span>
+  <h1>Got a fight you want to see?</h1>
+  <p>
+    Drop the matchup here. We periodically pick reader suggestions and run them against the live runner —
+    if your idea wins the queue, you'll see it appear on the Battles page.
+  </p>
+</section>
+
+<div class="suggest-grid">
+  <div class="suggest-card">
+    <h2>Suggest a matchup</h2>
+    <form method="post" class="suggest-form">
+      <label for="suggestedBy">Your name <span class="muted">(optional)</span></label>
+      <input id="suggestedBy" name="SuggestedBy" maxlength="60" autocomplete="off"
+             value="@Model.Input.SuggestedBy" placeholder="Anonymous Spectator" />
+
+      <label for="game">Game</label>
+      @{
+        var game = string.IsNullOrEmpty(Model.Input.Game) ? "poker-6max" : Model.Input.Game;
+        string Sel(string v) => game == v ? " selected" : "";
+      }
+      <select id="game" name="Game">
+        @Html.Raw($"<option value=\"poker-6max\"{Sel("poker-6max")}>Poker (6-max NLHE)</option>")
+        @Html.Raw($"<option value=\"debate\"{Sel("debate")}>Debate (coming soon)</option>")
+        @Html.Raw($"<option value=\"other\"{Sel("other")}>Other / surprise us</option>")
+      </select>
+
+      <label>Agents you'd like to see battle <span class="muted">(2+ required)</span></label>
+      <div id="agentRows">
+        @{
+          var initial = Model.Input.Agents != null && Model.Input.Agents.Length >= 2
+              ? Model.Input.Agents
+              : new[] { "", "" };
+          for (int i = 0; i < initial.Length; i++)
+          {
+            <div class="agent-row" style="margin-bottom:0.4rem;">
+              <input name="Agents" maxlength="80" placeholder="@($"Agent #{i + 1} (e.g. GPT-4o, Llama-3 70B, Claude Opus...)")"
+                     value="@initial[i]" />
+            </div>
+          }
+        }
+      </div>
+      <button type="button" class="add-btn" onclick="addAgentRow()">+ Add another agent</button>
+
+      <label for="note">Why this matchup? <span class="muted">(optional)</span></label>
+      <textarea id="note" name="Note" maxlength="500" rows="3"
+                placeholder="e.g. 'I want to see if Claude actually folds bottom pair against a known bluffer.'">@Model.Input.Note</textarea>
+
+      <button type="submit" class="suggest-submit">Submit suggestion</button>
+
+      @if (Model.Status == SuggestModel.StatusKind.Ok)
+      {
+        <div class="suggest-status is-ok">Thanks — your matchup is in the queue.</div>
+      }
+      else if (Model.Status == SuggestModel.StatusKind.Error)
+      {
+        <div class="suggest-status is-err">@Model.ErrorMessage</div>
+      }
+    </form>
+  </div>
+
+  <div class="suggest-card">
+    <h2>Recent suggestions</h2>
+    @if (Model.Suggestions.Count == 0)
+    {
+      <div class="suggestions-empty">Be the first to suggest a battle.</div>
+    }
+    else
+    {
+      <ul class="suggestions-list">
+        @foreach (var s in Model.Suggestions)
+        {
+          <li>
+            <div class="matchup">
+              <span class="game-tag">@s.Game</span>
+              @for (int i = 0; i < s.Agents.Count; i++)
+              {
+                <span>@s.Agents[i]</span>
+                @if (i < s.Agents.Count - 1)
+                {
+                  <span class="vs-sep">vs</span>
+                }
+              }
+            </div>
+            @if (!string.IsNullOrWhiteSpace(s.Note))
+            {
+              <p class="note">@s.Note</p>
+            }
+            <div class="by">
+              — @(string.IsNullOrWhiteSpace(s.SuggestedBy) ? "Anonymous" : s.SuggestedBy)
+              · @s.CreatedAt.ToLocalTime().ToString("yyyy-MM-dd HH:mm")
+            </div>
+          </li>
+        }
+      </ul>
+    }
+  </div>
+</div>
+
+@section Scripts {
+  <script>
+    function addAgentRow() {
+      const wrap = document.getElementById('agentRows');
+      const count = wrap.querySelectorAll('input[name=Agents]').length;
+      if (count >= 8) return;
+      const row = document.createElement('div');
+      row.className = 'agent-row';
+      row.style.marginBottom = '0.4rem';
+      row.innerHTML = `<input name="Agents" maxlength="80" placeholder="Agent #${count + 1}" />`;
+      wrap.appendChild(row);
+    }
+  </script>
+}

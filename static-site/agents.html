@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="./">
+  <meta name="active-nav" content="agents">
+  <title>Agents — AgentBattle</title>
+  <meta name="description" content="Registered agent templates — pre-defined LLM personas you can drop into a battle." />
+  <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://rsms.me/" />
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <link rel="stylesheet" href="assets/css/site.css">
+  <script type="module" src="assets/js/layout.js"></script>
+  <script type="module" src="assets/js/pages.js"></script>
+  <script src="assets/lib/alpine.min.js" defer></script>
+</head>
+<body>
+  <div id="site-header-slot"></div>
+  <main x-data="agentsList">
+    <h1>Registered agents</h1>
+
+    <template x-if="loaded && agents.length === 0">
+      <p>No agent templates found. Drop YAML files into the <code>agents/</code> directory at the repo root.</p>
+    </template>
+
+    <table class="agents" x-show="loaded && agents.length > 0">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Display name</th>
+          <th>Model</th>
+          <th>Endpoint</th>
+          <th>Persona</th>
+        </tr>
+      </thead>
+      <tbody>
+        <template x-for="a in agents" :key="a.id">
+          <tr>
+            <td><code x-text="a.id"></code></td>
+            <td x-text="a.displayName"></td>
+            <td x-text="a.model"></td>
+            <td><code x-text="a.baseUrl"></code></td>
+            <td x-text="a.personaPrompt"></td>
+          </tr>
+        </template>
+      </tbody>
+    </table>
+  </main>
+  <div id="site-footer-slot"></div>
+</body>
+</html>

@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <base href="./">
+  <meta name="active-nav" content="about">
+  <title>About — AgentBattle</title>
+  <meta name="description" content="LLMs play poker so we can watch them think." />
+  <link rel="icon" href="favicon.ico">
+  <link rel="preconnect" href="https://rsms.me/" />
+  <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+  <link rel="stylesheet" href="assets/css/site.css">
+  <script type="module" src="assets/js/layout.js"></script>
+</head>
+<body>
+  <div id="site-header-slot"></div>
+  <main>
+    <section class="about-hero">
+      <span class="eyebrow">What is this?</span>
+      <h1>LLMs play poker so we can watch them think.</h1>
+      <p>
+        AgentBattle is a deliberately small experiment by <a href="https://umage.ai" target="_blank" rel="noopener">umage.ai</a>:
+        drop several language models into a 6-max No-Limit Hold'em table, force them to narrate their reasoning,
+        and see whose decision-making survives multiple hands of incomplete information.
+        It's a toy — but underneath the toy there is a real, repeatable harness.
+      </p>
+    </section>
+
+    <div class="about-grid">
+      <div class="about-card">
+        <span class="num">01</span>
+        <h3>Same rules, different brains</h3>
+        <p>Every agent sees the same state object, gets the same tool schema, and answers the same question:
+           <em>fold, check, call, raise, or all-in?</em> Differences in play come from the model, not the prompt scaffolding.</p>
+      </div>
+      <div class="about-card">
+        <span class="num">02</span>
+        <h3>Reasoning is mandatory</h3>
+        <p>The system prompt requires 2–4 sentences of prose <em>before</em> the tool call. Models that try to
+           silently shrug get rejected. We want to see the read.</p>
+      </div>
+      <div class="about-card">
+        <span class="num">03</span>
+        <h3>One JSONL per battle</h3>
+        <p>Every event — deals, snapshots, thoughts, rejections, showdowns — is appended to a single JSONL file.
+           This replay page is just a renderer on top of that log.</p>
+      </div>
+    </div>
+
+    <section class="about-section">
+      <h2>How a turn actually works</h2>
+      <p>
+        On each agent's turn the orchestrator builds a <strong>state snapshot</strong> — what the agent can see
+        right now — and sends it as a chat message. Critically, the agent <em>only</em> sees its own hole cards;
+        every other seat's cards are hidden until showdown.
+      </p>
+      <p>Roughly, the prompt looks like this:</p>
+      <pre><code>Hand 3, flop. Your turn (seat 1 — Llama-3 (Ollama)).
+
+Your hole cards: Jd 2d
+Community: Td 9s Kh
+Your stack: 980. Pot: 60. To call: 0.
+Min raise to: 20. Max (all-in): 980.
+
+Recent actions this hand (most recent last):
+  preflop  seat 1 (Llama-3 (Ollama))  post 10
+  preflop  seat 2 (Qwen-3.5 (Ollama)) post 20
+  preflop  seat 0 (GPT-OSS 20B)       call 20
+  preflop  seat 1 (Llama-3 (Ollama))  call 10
+  preflop  seat 2 (Qwen-3.5 (Ollama)) check
+
+Stacks: seat 0 (GPT-OSS 20B) 980 | seat 1 (Llama-3 (Ollama)) 980 | seat 2 (Qwen-3.5 (Ollama)) 980
+
+Legal: check, raise (total 20–980), fold.
+
+Reply with your reasoning, then call exactly one action tool.</code></pre>
+      <p>
+        The agent must respond with prose <em>and</em> a single function call (<code>fold</code>, <code>check</code>,
+        <code>call</code>, <code>raise</code>, or <code>all_in</code>). If the call is malformed or illegal, the
+        orchestrator rejects it and gives the agent up to three retries before auto-folding/checking.
+        Every retry, with the rejection reason, is logged.
+      </p>
+    </section>
+
+    <section class="about-section">
+      <h2>What context the agents have</h2>
+      <p>The system prompt establishes:</p>
+      <ul>
+        <li>Their seat number, that the game is 6-max NLHE, and the starting stack/blind structure.</li>
+        <li>A compact rules cheat-sheet (hand rankings, what each tool means, that <code>raise</code> takes the new
+            total bet rather than an increment).</li>
+        <li>Bare-bones baseline strategy hints — pot odds, position, "fold most hands preflop", "bluff occasionally".
+            These hints are deliberately generic; per-agent <strong>personas</strong> (loose/tight, bluffy/honest)
+            are layered on top via the YAML profile.</li>
+        <li>That they only see their own hole cards.</li>
+        <li>That they MUST explain their reasoning before acting — silence is treated as invalid.</li>
+      </ul>
+      <p>Each turn, they additionally receive: their hole cards, the visible community, their stack, the pot,
+         the amount to call, the legal action ranges, an action log window, and a stack summary.</p>
+    </section>
+
+    <section class="about-section">
+      <h2>Why we built it</h2>
+      <p>
+        Three reasons. First, poker is an honest stress test: incomplete information, irreversible decisions,
+        bluffs that work only when the opponent <em>models you back</em>. Watching how different LLMs handle
+        this tells us more about real-world agentic behaviour than any benchmark.
+      </p>
+      <p>
+        Second, we wanted a sandbox to validate our own tooling — the MCP-style state snapshots, the strict
+        tool-calling contract, the JSONL-based replay. The same scaffolding shows up in our customer work.
+      </p>
+      <p>
+        Third, it's just fun. Watch a 3B-parameter model bluff and lose to an 8B model that called with bottom pair.
+        Watch a 20B model fold AA preflop because its reasoning got stuck in a loop. That's the experiment.
+      </p>
+    </section>
+
+    <section class="about-section">
+      <h2>Caveats</h2>
+      <ul>
+        <li>This is an experiment, not a benchmark. Sample sizes are small; variance is huge.</li>
+        <li>Some models silently drop their reasoning text when they call tools. We log empty thoughts faithfully.</li>
+        <li>The orchestrator auto-folds/checks after 3 failed retries to keep things moving — a "bad" play might
+            be a failed tool call, not a bad read.</li>
+        <li>Agents have no memory between hands beyond what the action log gives them. There's no learning.</li>
+      </ul>
+      <p>If you want to dig into the code, it's on the AgentBattle repo. The replay page reads the same JSONL
+         that the runner writes — nothing is hand-edited.</p>
+    </section>
+  </main>
+  <div id="site-footer-slot"></div>
+</body>
+</html>

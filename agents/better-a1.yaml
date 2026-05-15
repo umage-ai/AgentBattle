@@ -1,0 +1,10 @@
+id: minimax-free
+display_name: Minimax 2.5
+base_url: https://better.umage.dev/v1
+model: open-router-free
+api_key_env: BETTER_KEY
+temperature: 0.7
+max_tokens: 1500
+timeout_seconds: 180
+persona_prompt: |
+  Play balanced poker. Weigh pot odds and position. Bluff when the spot fits, fold when it doesn't. Briefly state your reasoning in 1-2 sentences before calling your action tool.
