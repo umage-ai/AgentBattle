@@ -130,7 +130,7 @@
     </div>
     <div class="thoughts-body" x-ref="thoughtsBody">
       <div class="thoughts-stream">
-        <template x-for="t in thoughtsStream.slice().reverse()" :key="t.id">
+        <template x-for="t in thoughtsStream" :key="t.id">
           <div class="thought-item" :class="{ 'is-active': t.seat === currentSeat }">
             <div class="thought-meta">
               <span class="thought-author" x-text="t.author"></span>

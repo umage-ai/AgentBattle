@@ -2,8 +2,8 @@ game: poker-6max
 hands: 5
 starting_stack: 1000
 blinds:
-  small: 10
-  big: 20
+  small: 25
+  big: 50
 seats:
   - { seat: 0, agent: better-gpt54 }
   - { seat: 1, agent: better-kimi26 }
