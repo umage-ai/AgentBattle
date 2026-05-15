@@ -90,6 +90,7 @@ function replay(battleId) {
         this._applyEvent(this.events[i], /*silent*/ true);
       }
       if (!silent) this._playSoundFor(this.events[this.idx]);
+      this._pinNewest();
     },
 
     // Forward step from play/next — drive animations & sounds.
@@ -165,6 +166,7 @@ function replay(battleId) {
             text: (e.text || '').trim(),
             action: null
           });
+          if (!silent) this._pinNewest();
           break;
         }
 
@@ -198,6 +200,7 @@ function replay(battleId) {
             text: '📝 ' + (e.text || '').trim(),
             action: { label: 'private note', verb: '', kind: 'note', amount: '' }
           });
+          if (!silent) this._pinNewest();
           break;
         }
 
@@ -354,6 +357,15 @@ function replay(battleId) {
       if (seat === this.sbSeat && this.sbSeat !== this.buttonSeat) return 'sb';
       if (seat === this.bbSeat && this.bbSeat !== this.buttonSeat && this.bbSeat !== this.sbSeat) return 'bb';
       return '';
+    },
+
+    // With flex column-reverse the newest item sits at the visual top. Setting scrollTop
+    // to 0 after a push guarantees it stays in view even when the user has scrolled away
+    // to read older entries.
+    _pinNewest() {
+      const el = this.$refs.thoughtsBody;
+      if (!el) return;
+      requestAnimationFrame(() => { el.scrollTop = 0; });
     },
 
     suitSymbol(s) {

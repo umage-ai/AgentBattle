@@ -74,12 +74,35 @@ public static class BattleOrchestrator
             var probeState = await mcp.GetMyStateAsync(seats[0], ct);
             var inactiveSeats = probeState.Seats.Where(s => s.IsInactive).Select(s => s.Seat).ToArray();
 
+            // Engine rotates the button internally; we recover button/SB/BB from the action log,
+            // which always starts with the SB post followed by the BB post for the new hand.
+            var posts = probeState.ActionLog.Where(a => a.Action == "post" && a.Street == Street.Preflop).Take(2).ToArray();
+            var sbSeat = posts.Length > 0 ? posts[0].Seat : seats[0];
+            var bbSeat = posts.Length > 1 ? posts[1].Seat : sbSeat;
+            var activeSeats = probeState.Seats.Where(s => !s.IsInactive).Select(s => s.Seat).ToHashSet();
+            int buttonSeat;
+            if (activeSeats.Count <= 2)
+            {
+                // Heads-up: button is the SB.
+                buttonSeat = sbSeat;
+            }
+            else
+            {
+                buttonSeat = sbSeat;
+                var sbIdx = System.Array.IndexOf(seats, sbSeat);
+                for (var step = 1; step <= seats.Length; step++)
+                {
+                    var cand = seats[((sbIdx - step) % seats.Length + seats.Length) % seats.Length];
+                    if (activeSeats.Contains(cand)) { buttonSeat = cand; break; }
+                }
+            }
+
             await sink.WriteAsync(new BattleEvent.HandStarted(
                 time.GetUtcNow(),
                 HandNo: hand,
-                ButtonSeat: 0,
-                SbSeat: 0,
-                BbSeat: 0,
+                ButtonSeat: buttonSeat,
+                SbSeat: sbSeat,
+                BbSeat: bbSeat,
                 InactiveSeats: inactiveSeats), ct);
 
             var reveals = await mcp.GodViewRevealAsync(ct);
