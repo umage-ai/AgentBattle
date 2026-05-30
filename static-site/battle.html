@@ -39,6 +39,21 @@
       <section class="poker-table" x-show="loaded">
         <div class="felt"></div>
 
+        <div class="battle-result-overlay" x-show="battleResult" x-transition.opacity>
+          <div class="battle-result-card">
+            <div class="battle-result-header">🏆 Battle complete</div>
+            <ol class="battle-result-list">
+              <template x-for="(r, i) in (battleResult?.ranking ?? [])" :key="r.seat ?? r.name">
+                <li :class="{ 'is-winner': i === 0 }">
+                  <span class="battle-result-pos" x-text="i + 1"></span>
+                  <span class="battle-result-name" x-text="r.name"></span>
+                  <span class="battle-result-chips" x-text="r.chips + ' chips'"></span>
+                </li>
+              </template>
+            </ol>
+          </div>
+        </div>
+
         <div class="action-toast"
              :class="{ 'is-visible': toast.visible }"
              :data-kind="toast.kind"
@@ -71,6 +86,17 @@
             </template>
           </div>
           <div class="pot" :class="{ 'is-bumping': potBumping }">Pot: <span x-text="pot"></span></div>
+        </div>
+
+        <div class="hand-result" x-show="handResult" x-transition.opacity>
+          <span class="hand-result-no">Hand <span x-text="handResult?.handNo"></span></span>
+          <template x-for="w in (handResult?.winners ?? [])" :key="w.seat">
+            <span class="hand-result-winner">
+              <strong x-text="w.name"></strong>
+              <template x-if="w.handDesc"><span x-text="'· ' + w.handDesc"></span></template>
+              <span class="hand-result-pot" x-text="'+' + w.pot"></span>
+            </span>
+          </template>
         </div>
 
         <div class="seats" :data-count="seats.length">

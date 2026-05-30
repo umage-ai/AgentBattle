@@ -37,6 +37,9 @@ function replay(battleId) {
 
     // Stack deltas for hand_ended
     _lastStacks: {},
+    handResult: null,
+    _pendingWinners: [],
+    battleResult: null,
 
     _timer: null,
 
@@ -85,6 +88,9 @@ function replay(battleId) {
       this.buttonSeat = this.sbSeat = this.bbSeat = null;
       this.winnerSeats = [];
       this._lastStacks = {};
+      this.handResult = null;
+      this._pendingWinners = [];
+      this.battleResult = null;
 
       for (let i = 0; i <= this.idx && i < this.events.length; i++) {
         this._applyEvent(this.events[i], /*silent*/ true);
@@ -124,6 +130,8 @@ function replay(battleId) {
           this.winnerSeats = [];
           this.seats.forEach(s => { s.currentBet = 0; s.hasFolded = false; s.delta = 0; });
           this._lastStacks = Object.fromEntries(this.seats.map(s => [s.seat, s.stack]));
+          this.handResult = null;
+          this._pendingWinners = [];
           break;
 
         case 'hole_cards_dealt':
@@ -216,6 +224,7 @@ function replay(battleId) {
             this.revealedSeats.add(r.seat);
             this.holeCards[r.seat] = r.cards || this.holeCards[r.seat];
           });
+          this._pendingWinners = e.winners || [];
           break;
 
         case 'hand_ended': {
@@ -236,13 +245,36 @@ function replay(battleId) {
           if (!silent && winners.length > 0) {
             this._highlightWinners(winners);
           }
+          const resultWinners = [];
+          if (this._pendingWinners.length > 0) {
+            for (const pw of this._pendingWinners) {
+              const s = this.seats.find(x => x.seat === pw.seat);
+              if (s) resultWinners.push({ name: s.displayName, seat: s.seat, handDesc: pw.hand_description, pot: pw.pot });
+            }
+          } else {
+            for (const seatNo of winners) {
+              const s = this.seats.find(x => x.seat === seatNo);
+              if (s) resultWinners.push({ name: s.displayName, seat: s.seat, handDesc: null, pot: s.delta });
+            }
+          }
+          this.handResult = resultWinners.length > 0 ? { handNo: e.hand_no, winners: resultWinners } : null;
           break;
         }
 
-        case 'battle_ended':
+        case 'battle_ended': {
           this.currentSeat = null;
           if (!silent) this._highlightBattleWinner(e);
+          const ranking = (e.ranking || []).map(r => {
+            const seat = this.seats.find(s => s.agentId === r.agent_id);
+            return {
+              seat: r.seat ?? seat?.seat ?? null,
+              name: seat ? seat.displayName : r.agent_id,
+              chips: r.chips,
+            };
+          });
+          this.battleResult = ranking.length > 0 ? { ranking } : null;
           break;
+        }
       }
     },
 
